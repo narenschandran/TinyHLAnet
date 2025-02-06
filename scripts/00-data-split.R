@@ -157,3 +157,13 @@ odir2 <- file.path(projroot, 'results', '01-model-tuning', '04-unseen-alleles')
 if (!dir.exists(odir2)) dir.create(odir2, recursive = T)
 
 writef(exl_data, file.path(odir2, 'excluded.tsv.xz'))
+
+nf <- file.path(prereq_dir, 'netmhcpan-keys.txt.xz')
+nf <- readLines(nf)
+
+train_keys <- sort(unique(c(nf, train_data$pmhc_key)))
+
+bdir <- file.path(projroot, 'results', '02-benchmark')
+if (!dir.exists(bdir)) dir.create(bdir, recursive = T)
+
+writeLines(train_keys, file.path(bdir, 'sars-cov2-exclude.txt'))
