@@ -103,7 +103,7 @@ hiv_bench_datadir="${bench_datadir}/hiv"
 for hiv_f in "${hiv_bench_datadir}/hiv-"*.tsv; do
     hiv_fbase=$(basename "$hiv_f" '.tsv')
 
-    hiv_netmhc_odir="${bench_datadir}/netmhcpan-data/${hiv_fbase}"
+    hiv_netmhc_odir="${bench_dir}/netmhcpan-data/${hiv_fbase}"
     bash "$NPROC" "$hiv_f" "$hiv_netmhc_odir"
 
 
