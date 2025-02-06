@@ -111,8 +111,49 @@ test_data <- readf(fs[["test"]])
 # Split the training data into training and validation splits
 x <- readf(fs[["train"]])
 y <- split_within_data_type(x, 0.9, 1, c('train', 'val'))
-train_data <- y$train
+train_data0 <- y$train
+
+# Some alleles have only binders and no non-binders (possibly)
+# because of removing peptide linkage across datasets. We're
+# removing this from the training data
+bx <- subset(train_data0, binder > (-1))
+
+bsp <- split(bx$binder, bx$allele)
+bmat <- do.call("rbind", lapply(bsp, function(x) {
+    l <- x == 1
+    c("nonbinders" = sum(!l), "binders" = sum(l))
+}))
+
+bdatf0 <- data.frame(
+    allele = names(bsp),
+    bmat, row.names = NULL
+)
+
+ncutoff <- 5
+selected_alleles <- bdatf0[apply(bdatf0[,-1], 1, min) >= ncutoff,1]
+excluded_alleles <- bdatf0[apply(bdatf0[,-1], 1, min) < ncutoff,1]
+
+# We keep all regression data, but remove biased alleles
+train_data <- local({
+    tmp <- train_data0
+    l  <- (tmp$regressand > (-1)) |
+          ((tmp$binder > (-1)) & (tmp$allele %in% selected_alleles))
+    tmp[l,]
+})
+
 val_data   <- y$val
 writef(train_data, file.path(odir, 'train.tsv.xz'))
 writef(val_data, file.path(odir, 'val.tsv.xz'))
 writef(test_data, file.path(odir, 'test.tsv.xz'))
+
+exl_data <- local({
+    subset(train_data0,
+           (binder == 1) &
+           (allele %in% excluded_alleles))
+})
+
+odir2 <- file.path(projroot, 'results', '01-model-tuning', '04-unseen-alleles')
+
+if (!dir.exists(odir2)) dir.create(odir2, recursive = T)
+
+writef(exl_data, file.path(odir2, 'excluded.tsv.xz'))
