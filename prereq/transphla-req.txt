@@ -1,0 +1,12 @@
+matplotlib==3.3.3
+numpy==1.24.0
+pandas==1.2.0
+scikit-learn==1.2.0
+scipy==1.5.4
+seaborn==0.11.1
+torch==1.7.1
+torchaudio==0.7.2
+torchsummary==1.5.1
+torchvision==0.8.2
+tornado==6.1
+tqdm==4.54.1
