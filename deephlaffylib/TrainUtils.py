@@ -154,9 +154,8 @@ def DefaultEarlyStopping():
     """Early stopping on validation loss to prevent overfitting"""
     return EarlyStopping(
         min_delta=0.001,
-        patience=15,
+        patience=10,
         monitor="val_loss",
-        start_from_epoch=15,
         restore_best_weights=True,
     )
 

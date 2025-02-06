@@ -1,0 +1,177 @@
+#! /usr/bin/env bash
+# Collection of some of my commonly used bash functions
+# Author: Naren C S <narenschandran@gmail.com> <narenc@iisc.ac.in>
+
+
+# Some notes on trying to find script location for sourcing:
+# http://mywiki.wooledge.org/BashFAQ/028
+shlib_path="$(realpath ${BASH_SOURCE})"
+shlib_dir="$(dirname ${shlib_path})"
+
+shlib_utilities_dir="${shlib_dir}/utilities"
+
+err_echo() {
+    echo "$1" 1>&2
+}
+
+pause_then_exit() {
+    err_echo "$1"
+    read -n 1 -p "This script will exit after the next keypress"
+    exit 1
+}
+
+empty_check() {
+    if [ -z "$1" ]; then
+        if [ ! -z "$2" ]; then
+            pause_then_exit "The [$2] variable is empty."
+        else
+            pause_then_exit "Some variable has failed an emptiness check"
+        fi
+    fi
+
+}
+
+exec_require() {
+    if [ ! -x "$(command -v $1)" ]; then
+        if [ ! -z "$2" ]; then
+            pause_then_exit "The [$2] executable file [$1] does not exist."
+        else
+            pause_then_exit "The executable file [$1] does not exist."
+        fi
+    fi
+}
+
+cd_safe() {
+    cd "$1" || pause_then_exit "Unable to change directory to [$1]"
+}
+
+dir_check() {
+    if [ ! -d "$1" ]; then
+        if [ ! -z "$2" ]; then
+            pause_then_exit "The [$2] directory [$1] does not exist."
+        else
+            pause_then_exit "The directory [$1] does not exist."
+        fi
+    fi
+
+}
+
+#'
+#' Exits script if file not present
+#' Arguments ->
+#' 1) File path
+#' 2) [Optional] File description
+file_require() {
+    if [ ! -f "$1" ]; then
+        if [ ! -z "$2" ]; then
+            pause_then_exit "The [$2] file [$1] does not exist."
+        else
+            pause_then_exit "The file [$1] does not exist."
+        fi
+    fi
+}
+
+dir_make() {
+    if [ ! -d "$1" ]; then
+        mkdir -p "$1"
+        if [ ! -d "$1" ]; then
+            pause_then_exit "Unable to create directory [$1]."
+        fi
+    fi
+}
+
+bash_major_version() {
+    echo "${BASH_VERSINFO:-0}"
+}
+
+enforce_bash_major_version() {
+    local version="$1"
+    if [ $(bash_major_version) -lt "$version" ]; then
+        pause_then_exit "Bash major version [${version}] or greater required."
+    fi
+}
+
+# Inputs
+# f -> File to check
+# sum -> Sum to match
+# Output -> 1 if sums match
+#           0 otherwise
+fcheck_md5sum() {
+    local f="$1"
+    local sum="$2"
+
+    file_require "$f" "fcheck_md5sum input file"
+    exec_require 'md5sum'
+    if [ -z "$sum" ]; then
+        pause_then_exit "The function fcheck_md5sum requires two inputs: <file> <md5sum>"
+    fi
+
+    calcsum=$(md5sum "$f" | cut -d' ' -f1)
+    if [ "$calcsum" = "$sum" ]; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+gz_ext_rm() {
+    local f="$1"
+    echo "$f" | sed 's/[.]gz$//g'
+}
+
+#' Simple because it assumes that the filename can be derived from the URL
+simple_download_and_check() {
+    local download_url="$1"
+    if [ -z "$download_url" ]; then
+        pause_then_exit "No download URL given to simple_download_and_check"
+    fi
+
+    local file_md5sum="$2"
+    if [ -z "$file_md5sum" ]; then
+        pause_then_exit "No md5sum given to simple_download_and_check"
+    fi
+
+    local download_dir="$3"
+    if [ -z "$download_dir" ]; then
+        pause_then_exit "No download directory given to simple_download_and_checK"
+    fi
+
+    if [ ! -z "$4" ]; then
+        expected_fname="$4"
+    else
+        expected_fname=$(basename "$download_url")
+    fi
+    local downloaded_file="$download_dir/$expected_fname"
+
+    if [ ! -f "$downloaded_file" ] || [ $(fcheck_md5sum "$downloaded_file" "$file_md5sum") -ne 1 ]; then
+        if [ -z "$4" ]; then
+            wget -P "$download_dir" -N "$download_url"
+        else
+            wget --content-disposition -P "$download_dir" -N "$download_url"
+        fi
+        if [ $(fcheck_md5sum "$downloaded_file" "$file_md5sum") -ne 1 ]; then
+            pause_then_exit "The file [$downloaded_file] was not successfully downloaded. Try redownloading it"
+        fi
+    fi
+    echo "$downloaded_file"
+}
+
+rnaseq_shlib_load() {
+    local rnaseq_shlib_path="${shlib_dir}/bashtlbx-rnaseq.shlib"
+    file_require "$rnaseq_shlib_path" "BASHTLBX RNAseq module"
+    source "$rnaseq_shlib_path"
+}
+
+geo_shlib_load() {
+    local geo_shlib_path="${shlib_dir}/bashtlbx-geo.shlib"
+    file_require "$geo_shlib_path" "BASHTLBX GEO module"
+    source "$geo_shlib_path"
+}
+
+
+structures_shlib_load() {
+    local structures_shlib_path="${shlib_dir}/bashtlbx-structures.shlib"
+    file_require "$structures_shlib_path" "BASHTLBX Structures module"
+    source "$structures_shlib_path"
+}
+

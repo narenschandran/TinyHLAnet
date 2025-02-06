@@ -54,8 +54,7 @@ run_model() {
 
 # These are the hyperparameters that are being scanned across.
 contact_types='expdecay simple allpairs'
-embdims='128 64 32 16 8 4'
-
+embdims='256 128 64 32 16 8 4'
 for embdim in $(echo "$embdims"); do
 for contact_type in $(echo "$contact_types"); do
     run_model "$embdim" "$contact_type"

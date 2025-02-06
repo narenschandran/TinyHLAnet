@@ -324,6 +324,35 @@ class EmitZeros(tf.keras.layers.Layer):
     def get_config(self):
         return {'name': self.name}
 
+@keras.saving.register_keras_serializable("deephlaffylib")
+class EmitOnes(tf.keras.layers.Layer):
+    '''Emits a matrix filled with ones, with the shape set by inputs.'''
+    def __init__(self, name):
+        super().__init__(name = name)
+
+    def call(self, inputs):
+        inp = inputs
+        zerovec = tf.expand_dims(tf.ones_like(inp, dtype = tf.float32), -1)
+        return zerovec[:,0,:]
+
+    def get_config(self):
+        return {'name': self.name}
+
+
+@keras.saving.register_keras_serializable("deephlaffylib")
+class EmitSame(tf.keras.layers.Layer):
+    '''Emits a matrix filled with the input, with the shape set by inputs.'''
+    def __init__(self, name):
+        super().__init__(name = name)
+
+    def call(self, inputs):
+        inp = inputs
+        zerovec = tf.expand_dims(inp, -1)
+        return zerovec[:,0,:]
+
+    def get_config(self):
+        return {'name': self.name}
+
 
 
 #------------------------------------------------------------------------------#

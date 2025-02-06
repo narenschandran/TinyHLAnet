@@ -72,7 +72,7 @@ for pos_conf in $(echo "$pos_confs"); do
 done
 
 # Then we optimize the embedding dimension and hidden nodes in the ANN
-dims='128 64 32 16 8 4'
+dims='256 128 64 32 16 8 4'
 for pos_dim in $(echo "$dims"); do
 for pos_node in $(echo "$dims"); do
     run_model "$embdim" "$contact_type" "${pos_dim}-sigmoid${pos_node}_sigmoid53"

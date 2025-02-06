@@ -1,0 +1,63 @@
+#! /usr/bin/env bash
+# Ideally, get dependencies for Python using you package manager before you
+# run this script.
+# For example, on Fedora, this is
+# dnf builddep python3
+#
+# Input1: Base folder into which python will be installed
+# Example: If <dir> is the Input1 for Python-3.11.11, then the folder
+# <dir>/python-3.11.11 will be created
+#
+# Input2: (Optional) folder into which Python source will be downloaded into
+script_path=$(realpath -s "${BASH_SOURCE[0]}")
+script_dir=$(dirname "$script_path")
+shlib_path="${script_dir}/bashtlbx.shlib"
+if [ ! -f "$shlib_path" ]; then
+    echo "Unable to find shilb with common functions." 1>&2
+    read -n 1 -p "This script will exit after the next keypress"
+    exit 1
+fi
+
+source "${shlib_path}"
+NTHREADS=8
+PYTHON3_URL='https://www.python.org/ftp/python/3.11.11/Python-3.11.11.tgz'
+PYTHON3_MD5SUM='9a5b43fcc06810b8ae924b0a080e6569'
+python_url="$PYTHON3_URL"
+python_md5sum="$PYTHON3_MD5SUM"
+python_fname=$(basename "$python_url" ".tgz")
+
+if [ "$#" -lt 1 ]; then
+    pause_then_exit "[$script_path] requires at least one positional argument: Location to install the software"
+else
+    python_inst_dir="$(realpath -s $1)/${python_fname,,}"
+    if [ "$#" -gt 1 ]; then
+        software_archive="$2"
+    else
+        software_archive="$(pwd)/archive/software"
+    fi
+fi
+dir_make "$python_inst_dir"
+dir_make "$software_archive"
+
+python_gz=$(simple_download_and_check "$python_url" "$python_md5sum" "$software_archive")
+python_exbase="${python_inst_dir}/tmp-extract"
+dir_make "$python_exbase"
+python_exdir="${python_exbase}/${python_fname}"
+tar xvzf "$python_gz" -C "$python_exbase"
+( 
+    cd "$python_exdir";
+    if [ -f "Makefile" ]; then
+      make clean
+    fi
+    ./configure --enable-optimizations --prefix="$python_inst_dir"
+    make -j$NTHREADS
+    make install
+)
+ 
+
+
+python_bin_dir="${python_inst_dir}/bin"
+python_exec="${python_bin_dir}/python3"
+$python_exec -m ensurepip
+exec_require "$python_exec" "Python executable"
+echo "Add [$python_bin_dir] to you \$PATH"

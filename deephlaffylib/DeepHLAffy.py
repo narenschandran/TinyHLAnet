@@ -2,7 +2,7 @@ import tensorflow as tf
 import keras
 from deephlaffylib.Layers import (
         AminoEmbLayer, ANN, ContactsLayer, PosImpBlock,
-        EmitOnesMat, EmitZeros,
+        EmitOnesMat, EmitZeros,  EmitOnes, EmitSame,
 
         default_output_layers,
 
@@ -62,13 +62,12 @@ class DeepHLAffy(tf.keras.models.Model):
 
         In addition to pHLA-I binding strength, binding-independent effects are
         accounted for when calculating presentation probability (qualitative
-        output that is fit to immunpeptidome data). The specific HLA-I and
-        peptide involved are assumed to have an additive effect on presentation
-        probability. This is meant to represent HLA-I promiscuity and peptide
-        processing (proteasome and TAP transport). This module is configured
-        using the "effects_conf" parameter. The configuration of the
-        "effects_conf" is similar to that of "pos_conf", but with no restriction
-        on the size of the outputs.
+        output that is fit to immunpeptidome data). The specific Peptide
+        involved is assumed to have an additive effect on presentation
+        probability. This is meant to represent peptide processing (proteasome
+        and TAP transport). This module is configured using the "effects_conf"
+        parameter. The configuration of the "effects_conf" is similar to that
+        of "pos_conf", but with no restriction on the size of the outputs.
 
         The "pos_conf" and "effects_conf" parameters accept <None> arguments
         if the model is to be built without these modules. In the case where
@@ -112,27 +111,26 @@ class DeepHLAffy(tf.keras.models.Model):
         else:
             if '-' not in self.pos_conf:
                 raise ValueError("Invalid PosConf")
+            print(f"--- MODEL INITIALIZATION LOG: Model initialized with pos_conf: [{self.pos_conf}].")
             pos_embdim, pos_annconf = self.pos_conf.split('-')
             self.posimpl = PosImpBlock(pos_embdim, pos_annconf, name = 'posimp')
 
         # [4] : Effects layer
         if self.effects_conf is None:
             print("--- MODEL INITIALIZATION LOG: No effects_conf given. Model will be built without the modules for binding-independent effects.")
-            self.hlaeffectl = EmitZeros('hlaeffect')
+            #self.pepeffectl = EmitZeros('pepeffect')
             self.pepeffectl = EmitZeros('pepeffect')
         else:
             if '-' not in self.effects_conf:
                 raise ValueError("Invalid EffectsConf")
+            print(f"--- MODEL INITIALIZATION LOG: Model initialized with effects_conf: [{self.effects_conf}].")
             effects_embdim, effects_annconf = self.effects_conf.split('-')
             effects_embdim = int(effects_embdim)
-            self.hlaeffectl = keras.Sequential([
-                AminoEmbLayer(effects_embdim, name = "hla_effects"),
-                ANN(effects_annconf, name = "hla_effects_ann", flatten = True)
-            ], name = 'hlaeffect')
             self.pepeffectl = keras.Sequential([
                 AminoEmbLayer(effects_embdim, name = "pep_effects"),
                 ANN(effects_annconf, name = "pep_effects_ann", flatten = True)
             ], name = 'pepeffect')
+
 
 
         # [5] : Output layer
@@ -170,7 +168,7 @@ class DeepHLAffy(tf.keras.models.Model):
         phla_sum  = self.msum(phla)
 
         # Binding-independent Effects
-        hlaeffect = self.hlaeffectl(hlainp)
+        #tapeffect = self.tapl(tapinp)
         pepeffect = self.pepeffectl(pepinp)
 
         # Model outputs
@@ -179,7 +177,7 @@ class DeepHLAffy(tf.keras.models.Model):
         regout    = self.regl(reg_intr)
 
         # [2] Binding
-        bind_intr = self.concat([phla_sum, hlaeffect, pepeffect])
+        bind_intr = self.concat([phla_sum, pepeffect])
         bindout   = self.bindl(bind_intr)
 
         return regout, bindout
