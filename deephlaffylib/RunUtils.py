@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 import re
 import numpy as np
 import pandas as pd
@@ -6,8 +7,15 @@ import pandas as pd
 import tensorflow as tf
 import keras
 
+from nbslpy.aacodes import _aa1lst
+standard_aminos = deepcopy(_aa1lst)
+if "X" in standard_aminos:
+    standard_aminos.remove("X")
+
+
 from nbslpy.seq import seq2ind, seq2aaradii_pmhc_ca
 from nbslpy._utils import readPickle
+from nbslpy.pam import PAM70 as PAM
 
 from deephlaffylib.DeepHLAffy import DeepHLAffy as Mod
 from deephlaffylib.Utils import *
@@ -70,7 +78,7 @@ def hla_inputs(x, dct = None):
         x = [x]
 
     # If the data is not of type list at this point, assume that
-    # it is a DataFrame. 
+    # it is a DataFrame.
     if isinstance(x, list):
         hlas = x
     else:
@@ -89,7 +97,7 @@ def pep_inputs(x):
         x = [x]
 
     # If the data is not of type list at this point, assume that
-    # it is a DataFrame. 
+    # it is a DataFrame.
     if isinstance(x, list):
         peptides = x
     else:
@@ -201,7 +209,11 @@ def load_and_check_input(f):
     ''' Wrapper function to check whether an input DataFrame can be used as a
         valid input to the default DeepHLAffy model '''
     x = pd.read_csv(f, sep = '\t')
+    return check_input(x)
 
+def check_input(x):
+    ''' Wrapper function to check whether an input DataFrame can be used as a
+        valid input to the default DeepHLAffy model '''
     # Ensure that the necessary columns are present to compute inputs
     if 'allele' not in x.columns:
         raise ValueError("Input needs to have an 'allele' column")
@@ -215,7 +227,7 @@ def load_and_check_input(f):
     x.loc[:,"proc_pep"] = validate_peptides(x.loc[:,"peptide"].values.tolist())
 
     cols = ["hla_map", "proc_pep"]
-    other_cols = ['regressand', 'binder', 'set', 'label']
+    other_cols = ['regressand', 'binder', 'set', 'label', 'pam', 'orig_peptide', 'mut_peptide', 'mutcode']
     for col in other_cols:
         if col in x.columns:
             cols.append(col)
@@ -319,3 +331,31 @@ def bind_mats_extract(bind_mats, odir):
         fname = fbase + ".tsv"
         fpath = os.path.join(odir, fname)
         datf.to_csv(fpath, sep = '\t')
+
+#------------------------------------------------#
+#              Mutation generation               #
+#------------------------------------------------#
+def single_mut_gen(peptide, allele = None, aminos = None):
+    if aminos is None:
+        aminos = standard_aminos
+    npos = len(peptide)
+    mut_peps = []
+    mut_pams = []
+    for i in range(npos):
+        orig_aa = peptide[i]
+        pre_pep  = peptide[:i]
+        post_pep = peptide[(i+1):]
+        for aa in aminos:
+            if aa != orig_aa:
+                new_pep = pre_pep + aa + post_pep
+                new_pam = PAM[orig_aa][aa]
+                mut_peps.append(new_pep)
+                mut_pams.append(new_pam)
+            res = pd.DataFrame({
+                'peptide'      : mut_peps,
+                'pam'          : mut_pams,
+                'orig_peptide' : peptide
+            })
+            if allele is not None:
+                res.insert(0, 'allele', allele)
+    return res

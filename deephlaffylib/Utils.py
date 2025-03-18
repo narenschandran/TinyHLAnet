@@ -1,4 +1,4 @@
-from hashlib import shake_256
+from hashlib import shake_256, md5
 
 import numpy as np
 from scipy.stats import spearmanr
@@ -10,6 +10,12 @@ import keras
 def model_load(modfn, model_f):
     mod = tf.keras.models.load_model(model_f, custom_objects={modfn.__name__: modfn})
     return mod
+
+def md5sum_compute(f):
+    fcon = open(f, 'rb')
+    chksum = md5(fcon.read()).hexdigest()
+    fcon.close()
+    return chksum
 
 def make_uuid(s):
     """
