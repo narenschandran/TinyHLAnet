@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+
+print_usage() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "Usage: [$script_name] <fasta-file>  <kmer-pred-files>" >&2
+    echo "           (Optional) <base-outdir> <file-basename>"   >&2
+}
+
+err_echo() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "[$script_name]" "$1" >&2
+}
+
+readfn() {
+    local f="$1"
+    local gz_pat='[.]gz$'
+    if [[ "$f" =~ $gz_pat ]]; then
+        zcat "$f"
+    else
+        cat "$f"
+    fi
+}
+
+
+#------------------------------------------------#
+#                Input validation                #
+#------------------------------------------------#
+
+fasta_f="$1"
+pred_f="$2"
+# Check [1]: Check for empty inputs
+if [ -z "$fasta_f" ] || [ -z "$pred_f" ]; then
+    err_echo "One or more of the inputs are missing"
+    print_usage
+    exit 1
+fi
+
+# We're using the "-e" check since we expect some
+# inputs may be file descriptors.
+if [ ! -e "$fasta_f" ]; then
+    err_echo "The input FASTA file [$fasta_f] does not exist"
+    print_usage
+    exit 2
+fi
+
+if [ ! -e "$pred_f" ]; then
+    err_echo "The input kmer predictions file [$fasta_f] does not exist"
+    print_usage
+    exit 3
+fi
+
+# Check [5]: Ensure that gawk is available somewhere
+gawk_chk=$(command -v gawk)
+if [ -z "$gawk_chk" ]; then
+    err_echo "This script requires the [gawk] command to successfully execute."
+    exit 4
+fi
+
+if [ ! -z "$3" ]; then
+    odir="$3"
+    write_flag=1
+    [ ! -d "$odir" ] && mkdir -p "$odir"
+    if [ -z "$4" ]; then
+        if [ -f "$pred_f" ]; then
+            fbase=$(basename $(basename "$pred_f" '.gz') '.tsv')
+        else
+            fbase='mapping'
+        fi
+    else
+        fbase="$4"
+    fi
+    outf="${odir}/${fbase}.scan.gz"
+    outf_md5="${odir}/${fbase}.md5"
+    if [ -f "$outf" ] && [ -f "$outf_md5" ]; then
+        err_echo "A prior mapping run exists at [$outf]. Skipping run..."
+        exit 0
+    fi
+else
+    outf=/dev/stdout
+fi
+
+writefn() {
+    local flag="$1"
+    if [ -z "$flag" ]; then
+        cat 
+    else
+        cat | gzip -9
+    fi
+}
+
+gawk -vK=9 -vpred_f=<(readfn "$pred_f") '
+# Trim trailing whitespaces
+function trimws(s) {
+    sub(/\s+$/, "", s)
+    sub(/^\s+/, "", s)
+    return s
+}
+
+
+function map_binding(seq, hd,     L, ilim, i, pep) {
+    sub(/^>/, "", hd)
+    L    = length(seq)
+    ilim = L - K + 1
+    printf hd"\t"
+    for (i = 1; i <= ilim; i++) {
+        pep = substr(seq, i, K)
+        if (i != 1) { printf "," }
+        if (pep in peparr) {
+            printf peparr[pep]
+        } else {
+            printf "NA"
+        }
+    }
+    printf "\n"
+}
+
+
+
+BEGIN {
+    # We sometimes expect the prediction file to be a
+    # concatenation of multiple prediction runs so
+    # as to not rerun the same k-mers multiple times.
+    # As a result, we do not explicitly handle headers,
+    # and it is not expected to affect the analysis
+    # in any way since it will be tucked away in its
+    # own associative array entry.
+    while (getline pline < pred_f) {
+        split(pline, parr, "\t")
+        pep  = parr[2]
+        aff  = parr[3]
+        prob = parr[4]
+        peparr[pep] = prob
+    }
+    if (K == "") { K = 9 }
+    print "protein\tbindprob"
+}
+
+# If the current line is not a header, we are
+# still within the current entry, and we keep
+# collecting the sequence information.
+!/^>/ { curr_seq = curr_seq""trimws($0) }
+
+# If the current line is a header, the currently
+# running entry (if any) is complete, and can
+# be processed before proceeding to the next one.
+/^>/ {
+    if (curr_hd != "") {
+        map_binding(curr_seq, curr_hd)
+        curr_seq = ""
+        curr_hd  = ""
+    }
+    curr_hd  = $0
+    curr_seq = ""
+}
+
+END { map_binding(curr_seq, curr_hd) }' <(readfn "$fasta_f") | writefn "$write_flag" > "$outf"
+
+if [ ! -z "$odir" ]; then
+    chksum=$(md5sum <(readfn "$outf") | cut -f1 -d' ')
+    echo "$chksum" > "$outf_md5"
+fi

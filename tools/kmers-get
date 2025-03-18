@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+
+print_usage() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "Usage: $script_name <fasta-file> <base-outdir:optional> <file-basename:optional>" >&2
+}
+
+err_echo() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "[$script_name]" "$1" >&2
+}
+
+readfn() {
+    local f="$1"
+    local gz_pat='[.]gz$'
+    if [[ "$f" =~ $gz_pat ]]; then
+        zcat "$f"
+    else
+        cat "$f"
+    fi
+}
+
+#------------------------------------------------#
+#                Input validation                #
+#------------------------------------------------#
+fasta_f="$1"
+# Check [1]: Was an input file provided?
+if [ -z "$fasta_f" ]; then
+    err_echo "No input FASTA provided"
+    print_usage
+    exit 1
+fi
+
+# Check [2]: Does the input file exist as a regular file?
+if [ ! -e "$fasta_f" ]; then
+    err_echo "The input file [$fasta_f] does not exist"
+    print_usage
+    exit 2
+fi
+
+# Ready the output directory
+if [ ! -z "$2" ]; then
+    odir="$2"
+    [ ! -d "$odir" ] && mkdir -p "$odir"
+    if [ -z "$3" ]; then
+        fbase="kmers"
+    else
+        fbase="$3"
+    fi
+fi
+
+# Check [3]: Ensure that gawk is available somewhere
+gawk_chk=$(command -v gawk)
+if [ -z "$gawk_chk" ]; then
+    err_echo "This script requires the [gawk] command to successfully execute."
+    exit 3
+fi
+
+#------------------------------------------------#
+#                 Program logic                  #
+#------------------------------------------------#
+# We only want to process sequences that are     #
+# properly formatted in the FASTA format. As     #
+# a result, we use the header to act as an       #
+# anchor to check if a sequence is beginning,    #
+# and we know when a sequence is completely      #
+# read when we hit the next header or the        #
+# end-of-file.                                   #
+#------------------------------------------------#
+
+chksum_compute() {
+    md5sum <(readfn "$1") | cut -f1 -d' '
+}
+
+if [ ! -z "$odir" ]; then
+    outf="${odir}/${fbase}.txt.gz"
+    outf_lock="${odir}/${fbase}.fasta.md5"
+else
+    outf=/dev/stdout
+fi
+
+# If no output directory is specified, we start
+# writing to stdout without checking for any
+# prior runs.
+if [ -z "$odir" ]; then
+    # This is a dummy variable
+    continue_run=1
+elif [ -f "$outf_lock" ]; then
+    curr_chksum=$(chksum_compute "$fasta_f")
+    prev_chksum=$(cat "$outf_lock")
+    if [ "$curr_chksum" = "$prev_chksum" ]; then
+        err_echo "Using the existing k-mers file at: [$outf]"
+        exit 0
+    else
+        err_echo "There is an already existing kmers-file at: [$outf], generated with a different input file. Delete this file and try again."
+        exit 4
+    fi
+else
+    continue_run=1
+fi
+
+writefn() {
+    local flag="$1"
+    if [ -z "$flag" ]; then
+        sort
+    else
+        sort | gzip -9
+    fi
+}
+if [ ! -z "$odir" ]; then
+    write_flag=1
+fi
+
+gawk -vK='9' '
+# Trim trailing whitespaces
+function trimws(s) {
+    sub(/\s+$/, "", s)
+    sub(/^\s+/, "", s)
+    return s
+}
+
+# Count kmers and update them in a global
+# associative array.
+function kmers_print(seq,           i, L, ilim) {
+    L    = length(seq)
+    ilim = L- K + 1
+    for (i = 1; i <= ilim; i++) {
+        pep = substr(seq, i, K)
+        if (!(pep in peps)) {
+            print pep
+            peps[pep] = 1
+        }
+    }
+}
+
+
+BEGIN {
+    curr_hd  = ""
+    curr_seq = ""
+}
+
+# If the current line is not a header, we are
+# still within the current entry, and we keep
+# collecting the sequence information.
+!/^>/ { curr_seq = curr_seq""trimws($0) }
+
+# If the current line is a header, the currently
+# running entry (if any) is complete, and can
+# be processed before proceeding to the next one.
+/^>/ {
+    if (curr_hd != "") {
+        kmers_print(curr_seq)
+        curr_seq = ""
+        curr_hd  = ""
+    }
+    curr_hd  = $0
+    curr_seq = ""
+}
+
+END {
+    # We process the last entry.
+    kmers_print(curr_seq)
+}
+' <(readfn "$fasta_f") | writefn "$write_flag"  > "$outf"
+
+if [ ! -z "$odir" ]; then
+    echo $(chksum_compute "$fasta_f") > "$outf_lock"
+fi
+
+

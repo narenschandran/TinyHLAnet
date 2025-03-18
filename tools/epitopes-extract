@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+
+print_usage() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "Usage: $script_name <fasta-file> <prot-scan>"
+}
+
+err_echo() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "[$script_name]" "$1" >&2
+}
+
+readfn() {
+    local f="$1"
+    local gz_pat='[.]gz$'
+    if [[ "$f" =~ $gz_pat ]]; then
+        zcat "$f"
+    else
+        cat "$f"
+    fi
+}
+
+
+writefn() {
+    local flag="$1"
+    if [ -z "$flag" ]; then
+        cat
+    else
+        cat | gzip -9
+    fi
+}
+
+#------------------------------------------------#
+#                Input validation                #
+#------------------------------------------------#
+fasta_f="$1"
+scan_f="$2"
+
+# Check [1]: Input file
+if [ -z "$fasta_f" ] || [ -z "$scan_f" ]; then
+    err_echo "One or more inputs are missing"
+    print_usage
+    exit 1
+fi
+
+# Check [2]: Does the input file exist as a regular file?
+if [ ! -e "$fasta_f" ] || [ ! -e "$scan_f" ]; then
+    err_echo "One or more inputs do not exist"
+    print_usage
+    exit 2
+fi
+
+if [ -z "$3" ]; then
+    cutoff=0.5
+else
+    cutoff="$3"
+fi
+
+float_pat='^[0-9]+[.]*[0-9]*$'
+if ! [[ "$cutoff" =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
+    err_echo "The input cutoff is not a valid floating point number"
+    exit 3
+fi
+
+# Ready the output directory
+if [ ! -z "$4" ]; then
+    odir="$4"
+    [ ! -d "$odir" ] && mkdir -p "$odir"
+    if [ -z "$5" ]; then
+        fbase="epitopes"
+    else
+        fbase="$5"
+    fi
+fi
+
+# Check [4]: Ensure that gawk is available somewhere
+gawk_chk=$(command -v gawk)
+if [ -z "$gawk_chk" ]; then
+    err_echo "This script requires the [gawk] command to successfully execute."
+    exit 5
+fi
+
+chksum_compute() {
+    md5sum <(readfn "$1") | cut -f1 -d' '
+}
+
+if [ ! -z "$odir" ]; then
+    outf="${odir}/${fbase}.fa.gz"
+    outf_lock="${odir}/${fbase}.scan.md5"
+    write_flag=1
+else
+    outf=/dev/stdout
+fi
+
+# If no output directory is specified, we start
+# writing to stdout without checking for any
+# prior runs.
+if [ -z "$odir" ]; then
+    # This is a dummy variable
+    continue_run=1
+elif [ -f "$outf_lock" ]; then
+    curr_chksum=$(chksum_compute "$scan_f")
+    prev_chksum=$(cat "$outf_lock")
+    if [ "$curr_chksum" = "$prev_chksum" ]; then
+        err_echo "Epitopes file already exists at: [$outf]"
+        exit 0
+    else
+        err_echo "There is an already existing epitopes at: [$outf], generated with a different input file. Delete this file and try again."
+        exit 4
+    fi
+else
+    continue_run=1
+fi
+
+# We take the FASTA file as the pre-input so that
+# we can check whether the IDs of the proteome
+# scan are all present as we process them.
+#
+# This is justified by the expectation that some
+# proteome scanning might be carried out only
+# for subsets of proteins.
+gawk -F'\t' -vK=9 -vfasta_f=<(readfn "${fasta_f}") -vcutoff="$cutoff" '
+
+function trimws(s) {
+    sub(/^[[:space:]]+/, "", s)
+    sub(/[[:space:]]+$/, "", s)
+    return s
+}
+
+BEGIN {
+    curr_hd  = ""
+    curr_seq = ""
+    while (getline fasta_line < fasta_f) {
+        fasta_line = trimws(fasta_line)
+        if (fasta_line ~ /^>/) {
+            if (curr_hd != "") {
+                seq_arr[curr_hd] = curr_seq
+                len_arr[curr_hd] = length(curr_seq)
+                curr_hd  = ""
+                curr_seq = ""
+            }
+            curr_hd = fasta_line
+            sub(/^>/, "", curr_hd)
+        } else {
+            curr_seq = curr_seq""fasta_line
+        }
+    }
+    seq_arr[curr_hd] = curr_seq
+    len_arr[curr_hd] = length(curr_seq)
+    curr_hd  = ""
+    curr_seq = ""
+    if (K == "") { K = 9 }
+}
+
+NR > 1 {
+    prot_id = $1
+    if (!(prot_id in seq_arr)) {
+        print "The ID: ["prot_id"] is not present in the FASTA file"
+        exit 1
+    }
+    split($2, window_arr, ",")
+    exp_wlen = len_arr[prot_id] - K + 1
+    if (exp_wlen != length(window_arr)) {
+        print "There is a length mismatch between the FASTA file and the proteome scanning input for ["prot_id"]"
+        exit 2
+    }
+
+    print ">"prot_id
+    for (i = 1; i <= exp_wlen; i++) {
+        v = window_arr[i]
+        if (v > cutoff) { print substr(seq_arr[prot_id], i, K) }
+    }
+}
+' <(readfn "$scan_f") | writefn "$write_flag" > "$outf"
+
+if [ ! -z "$odir" ]; then
+    chksum_compute "$scan_f" > "$outf_lock"
+fi

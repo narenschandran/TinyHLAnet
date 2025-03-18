@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+
+#' This file takes the output from the kmer retrieving
+#' script (kmers-get) and generate a data frame
+#' that can be fed to DeepHLAffy.
+#'
+print_usage() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "Usage: [$script_name] <kmer-file> <allele> <base-outdir>" >&2
+}
+
+err_echo() {
+    local script_name=$(basename "${BASH_SOURCE[0]}")
+    echo "[$script_name]" "$1" >&2
+}
+
+
+#------------------------------------------------#
+#                Input validation                #
+#------------------------------------------------#
+
+kmers_f="$1"
+# Check [1]: Was an input file provided?
+if [ -z "$kmers_f" ]; then
+    err_echo "No input kmer file recieved"
+    print_usage
+    exit 1
+fi
+
+# Check [2]: Does the input file exist as a regular file?
+if [ ! -f "$kmers_f" ]; then
+    err_echo "The input file [$f] does not exist"
+    print_usage
+    exit 2
+fi
+
+allele_input="$2"
+
+# Check [3]: Ensure that the allele input was provided.
+if [ -z "$allele_input" ]; then
+    err_echo "No allele input recieved"
+    print_usage
+    exit 3
+fi
+
+
+# Determine output directory
+if [ -z "$3" ]; then
+    out_dir=$(pwd)/deephlaffy-predictions
+else
+    out_dir="$3"
+fi
+
+# Check [4]: Ensure that the HLA allele input is in
+# one of the patterns that we accept.
+hla_pat1='^HLA[-][ABC][*][0-9][0-9]*[:][0-9][0-9]*$'
+hla_pat1_p=$(echo "$allele_input" | grep -c "$hla_pat1")
+hla_pat2='^[ABC][*][0-9][0-9]*[:][0-9][0-9]*$'
+hla_pat2_p=$(echo "$allele_input" | grep -c "$hla_pat2")
+
+if [[ "$allele_input" =~ $hla_pat1 ]]; then
+    allele="$allele_input"
+elif [[ "$allele_input" =~ $hla_pat2 ]]; then
+    allele="HLA-${allele_input}"
+else
+    err_echo "The given allele input [$allele_input] is not of the required format"
+    print_usage
+    exit 4
+fi
+
+# Check [5]: Ensure that gawk is available somewhere
+gawk_chk=$(command -v gawk)
+if [ -z "$gawk_chk" ]; then
+    err_echo "This script requires the [gawk] command to successfully execute."
+    print_usage
+    exit 5
+fi
+
+#------------------------------------------------#
+
+inp_dir="${out_dir}/kmer-inputs"
+if [ ! -d "$inp_dir" ]; then
+    mkdir -p "$inp_dir"
+fi
+allele_str=$(echo "$allele" | sed 's/[*:]/-/g')
+inpf="${inp_dir}/${allele_str}.tsv.gz"
+inp_lock="${inp_dir}/${allele_str}.md5"
+
+readfn() {
+    local f="$1"
+    local gz_pat='[.]gz$'
+    if [[ "$f" =~ $gz_pat ]]; then
+        zcat "$f"
+    else
+        cat "$f"
+    fi
+}
+
+chksum_compute() {
+    md5sum <(readfn "$1") | cut -f1 -d' '
+}
+
+if [ -f "$inp_lock" ] && [ -f "$inp_f" ]; then
+    prev_chksum=$(cat "$inp_lock")
+    curr_chksum=$(chksum_compute "$kmers_f")
+    if [ "$prev_chksum" != "$curr_chksum" ]; then
+        echo "A previous run was carried out on a kmer file with MD5sum: [$prev_chksum], but the current kmer file has an MD5sum of [$curr_chksum]. Please resolve the discrepancy before continuing" >&2
+        exit 5
+    else
+        echo "The file [$inp_f] already exists. Re-using input from previous run"
+        continue_run=0
+    fi
+else
+    continue_run=1
+fi
+
+
+
+if [ "$continue_run" -eq 1 ]; then
+    gawk -vallele="$allele" '
+        BEGIN  { print "allele\tpeptide" }
+        { print allele"\t"$1      }
+    ' <(readfn "$kmers_f") | gzip -9 > "$inpf"
+    chksum_compute "$kmers_f" > "$inp_lock"
+fi
+
+pred_dir="${out_dir}/kmer-pred"
+if [ ! -d "$pred_dir" ]; then
+    mkdir -p "$pred_dir"
+fi
+
+CURR_SCR_DIR=$(dirname "${BASH_SOURCE[0]}")
+DEEPHLAFFY="${CURR_SCR_DIR}/../deephlaffy.py"
+outfname="${allele_str}"
+python3 "$DEEPHLAFFY" --no-overwrite -f "$outfname" -o "$pred_dir" "$inpf"
