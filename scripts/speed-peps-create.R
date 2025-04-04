@@ -46,40 +46,34 @@ if (!dir.exists(odir)) dir.create(odir, recursive = T)
 allele        <- "HLA-A*02:01"
 transphla_pkt <- 'YFAMYGEKVAHTHVDTLYVRYHYYTWAVLAYTWY'
 
+NTHREADS <- 16
 powers <- 1:6
 ms <- 10 ^ (powers)
+netmhc_par_base_odir <- file.path(bench_dir, 'nethmhcpan-parallel', 'data')
 for (p in powers) {
     m <- ms[p]
-
-    # Used for netMHCpan & MixMHCpred
-    netmhcpan_odir <- file.path(odir, '..', '..', 'netmhcpan-data', 'speed')
-    if (!dir.exists(netmhcpan_odir)) dir.create(netmhcpan_odir, recursive = T)
-    fname <- sprintf("peps-%d.txt", p)
-    fpath <- file.path(netmhcpan_odir, fname)
     pepset <- peps[seq_len(m)]
-    writeLines(pepset, fpath)
 
-    # Used for DeepHLAffy & MHCflurry
-    fname2 <- sprintf("peps-%d.tsv", p)
-    fpath2 <- file.path(odir, fname2)
+    fname <- sprintf("peps-%d.tsv", p)
+    fpath <- file.path(odir, fname)
     datf <- data.frame(
         allele = allele,
         peptide = pepset
     )
-    write.table(datf, fpath2, sep = '\t', row.names = F, quote = F)
-
-    # Used for TransPHLA
-    tphla_odir <- file.path(odir, '..', '..', 'transphla-data', 'speed')
-
-    if (!dir.exists(tphla_odir)) dir.create(tphla_odir, recursive = T)
-    p_fname <- sprintf("peps-%d.fa", p)
-    p_fpath <- file.path(tphla_odir, p_fname)
-    write.fasta(as.list(pepset), peps, p_fpath)
+    write.table(datf, fpath, sep = '\t', row.names = F, quote = F)
 
 
-    h_fname <- sprintf("hla-%d.fa", p)
-    h_fpath <- file.path(tphla_odir, h_fname)
-    hvec  <- rep(transphla_pkt, length(pepset))
-    hname <- rep(allele, length(pepset))
-    write.fasta(as.list(hvec), hname, h_fpath)
+    # This is for the netMHCpan parallel run
+    sp_size <- ceiling(nrow(datf) / NTHREADS)
+    sp_ind <- rep(seq_len(NTHREADS), each = sp_size)
+    sp <- Filter(function(x) nrow(x) > 0, suppressWarnings(split(datf, sp_ind)))
+    netmhc_par_odir <- file.path(netmhc_par_base_odir, sprintf('peps-%d', p))
+    if (!dir.exists(netmhc_par_odir)) dir.create(netmhc_par_odir, recursive = T)
+
+    for (i in seq_along(sp)) {
+        ofile <- file.path(netmhc_par_odir,
+                           sprintf("peps-%d%s.txt", i, letters[i]))
+        write.table(sp[[i]], ofile, sep = '\t', row.names = F,
+                    quote = F)
+    }
 }

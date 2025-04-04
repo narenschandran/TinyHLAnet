@@ -2,9 +2,13 @@
 library(scriptloc)
 script_dir <- script_dir_get()
 projroot   <- file.path(script_dir, '..')
-bench_dir  <- file.path(projroot, 'results', '02-benchmark')
+case_dir  <- file.path(projroot, 'results', '03-case-study')
+prereq_dir <- file.path(projroot, 'prereq')
 
-f  <- file.path(bench_dir, 'lanl-hiv.csv')
+excl_f <- file.path(case_dir, '..', '02-benchmark', 'exclude-keys.txt')
+excl <- readLines(excl_f)
+
+f  <- file.path(case_dir, 'lanl-hiv.csv')
 
 # The second line is a timestamp, so we skip it.
 hd <- gsub('"', "", strsplit(readLines(f, n = 1), ",")[[1]])
@@ -35,15 +39,15 @@ ancodes <- local({
 
 # Should be used for binding affinity check
 # DHB  = Diminished HLA binding,
-# 
+#
 # # Should check binder score for these
 # E    = Escape,
 # EL   = Epitope loss,
 # LE   = Literature escape,
-# 
+#
 # # Should check peptide-specific effects for these
 # P    = Processing,
-# 
+#
 # # Some evidence that diminished HLA binding, but not
 # # always a functional assay.
 # CHB  = Calculated diminished HLA binding,
@@ -100,7 +104,7 @@ y$alleles <- sapply(strsplit(y$HLA, ", "), function(al) {
     return(paste(al[l], collapse = ","))
 })
 
-valid_9mer <- function(x) grepl("^[A-Za-z]{9}$", x)
+valid_9mer <- function(x) grepl("^[ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy]{9}$", x)
 z <- subset(y, (alleles != "")      &
                valid_9mer(Epitope)  &
                valid_9mer(`Variant Epitope`))
@@ -128,7 +132,6 @@ clean_df <- rbind.data.frame(single_z, multi_z)
 
 code_split <- list(
     'hla-binding'    = c("DHB"),
-    'pep-processing' = c("P"),
     'epitope-escape' = c("E", "EL", "LE")
 )
 
@@ -139,41 +142,38 @@ datf0 <- data.frame(
     mutcode     = clean_df$`Mutation Type Code`
 )
 
+
+excl_l <- with(datf0,
+    (paste(allele, peptide) %in% excl)|
+    (paste(allele, mut_peptide) %in% excl))
+
+datf1 <- datf0[!excl_l,]
 datf_split <- lapply(code_split, function(code_sp) {
-    sp <- strsplit(datf0$mutcode, ", ")
+    sp <- strsplit(datf1$mutcode, ", ")
     l  <- sapply(sp, function(x) any(x %in% code_sp))
-    datf0[l,]
+    datf1[l,]
 })
 
+hiv_case_dir <- file.path(case_dir, 'data', 'hiv')
 
-bench_dir <- file.path(projroot, 'results', '02-benchmark')
-hiv_bench_dir <- file.path(bench_dir, 'data', 'hiv')
+if (!dir.exists(hiv_case_dir)) dir.create(hiv_case_dir, recursive = T)
 
-if (!dir.exists(hiv_bench_dir)) dir.create(hiv_bench_dir, recursive = T)
+nm <- 'epitope-escape'
+datf_sp <- datf_split[[nm]]
 
-for (nm in names(datf_split)) {
-    datf_sp <- datf_split[[nm]]
-    a <- do.call("rbind.data.frame", apply(datf_sp, 1, function(x) {
-        y <- c(x, "label" = 1)
-        tmp <- y
-        tmp[["peptide"]] <- tmp[["mut_peptide"]]
-        tmp[["label"]] <- 0
-        rbind(y, tmp)[,-c(3, 4)]
-    }, simplify = F))
-    rownames(a) <- NULL
-    a$set <- sprintf('%s-%03d', nm, rep(seq_len(nrow(a) / 2), each = 2))
-    b <- unique(a)
-    if (nm == "hla-binding") {
-        b[["regressand"]] <- b[["label"]]
-    } else if (nm == "epitope-escape") {
-        b[["binder"]] <- b[["label"]]
-    } else if (nm == "pep-processing") {
-        b[["pep_processing"]] <- b[["label"]]
-        b[["binder"]] <- b[["label"]]
-    } else {
-        stop("Unknown data split type")
-    }
-    fname <- paste0("hiv-", nm, ".tsv")
-    fpath <- file.path(hiv_bench_dir, fname)
-    write.table(b, fpath, sep = '\t', row.names = F, quote = F)
-}
+dup_l   <- duplicated(apply(datf_sp[,1:3], 1, paste, collapse = " "))
+
+datf_out0 <- datf_sp[!dup_l,]
+a1 <- do.call("rbind", strsplit(datf_out0$peptide, ""))
+a2 <- do.call("rbind", strsplit(datf_out0$mut_peptide, ""))
+single_l <- rowSums(a1 != a2) == 1
+datf_out <- datf_out0[single_l,]
+datf_out <- datf_out[!grepl("RCR", datf_out$mutcode),]
+datf_out <- datf_out[!grepl("^A, |, A", datf_out$mutcode),]
+datf_out <- datf_out[!grepl("^SF, |, SF", datf_out$mutcode),]
+datf_out <- datf_out[!grepl("^DI, |, DI", datf_out$mutcode),]
+datf_out <- datf_out[!grepl("^IE, |, IE", datf_out$mutcode),]
+
+fname <- paste0("hiv-", nm, ".tsv")
+fpath <- file.path(hiv_case_dir, fname)
+write.table(datf_out, fpath, sep = '\t', row.names = F, quote = F)

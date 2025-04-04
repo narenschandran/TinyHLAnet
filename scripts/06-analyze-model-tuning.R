@@ -161,15 +161,13 @@ tiff_open(prauc_file)
 prauc_hyperp_ph(subsetm(prov, "PRAUC"), pal = bind_pal3, best_ncol = "white")
 tiff_close(prauc_file)
 
-stop()
-
 library(Boruta)
 
 set.seed(0)
 reg_boruta <- Boruta(MSE ~ BaseEmbDim + Contacts + EnvEmbDim + EnvNode + EnvActvIn + EnvActvOut, reg_perf, pValue = 1e-6, maxRuns = 2000)
 
 set.seed(0)
-both_boruta <- Boruta(BCE ~ FxEmbDim + FxNode + FxActvIn + FxActvOut, both_perf, pValue = 1e-6, maxRuns = 2000)
+both_boruta <- Boruta(BCE ~ FxEmbDim + FxNode + FxActvIn, both_perf, pValue = 1e-6, maxRuns = 2000)
 
 
 ccode <- c("lightgoldenrod1", "cornflowerblue", "indianred1", "grey80")
@@ -187,6 +185,3 @@ tiff_open(both_boruta_fpath, 3500, 3500, 600)
 par(oma = c(4, 3, 3, 3), family = "serif")
 plot(both_boruta, ccode, xlab = NA, ylab = NA, horizontal = T, las = 2)
 tiff_close(both_boruta_fpath)
-
-
-
