@@ -69,10 +69,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+f     = args.filename
 if args.output_dir is None:
-    odir = os.path.dirname(f)
-    if odir == '':
-        odir = '.'
+    odir = 'deephlaffy-predictions'
 else:
     odir = args.output_dir
 
@@ -83,7 +82,6 @@ elif args.extended_output:
 else:
     conf = 'default'
 
-f     = args.filename
 # We do two splits in order to remove any compression extensions, if any
 if args.file_base is None:
     fbase = os.path.splitext(os.path.splitext(os.path.basename(f))[0])[0] + '.deephlaffy'
