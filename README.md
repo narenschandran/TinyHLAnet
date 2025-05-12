@@ -19,8 +19,10 @@ Once the environment/packages are setup the following commands need to be run ex
 bash run-data/setup.sh
 chmod +x tinyhlanet-scan
 ```
-
 Now we're good to go!
+
+### In case you're using Windows
+The outputs from this toolkit are typically produced in `.gz` format to ensure that minimal space is used on the user's machine. In case you do not have any software to extract these files, you can use the 7zip program from: https://www.7-zip.org/.
 
 ## Quick start guide
 The TinyHLAnet toolkit comes with three use interfaces. This section will showcase quick examples for all three.
