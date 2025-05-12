@@ -51,7 +51,7 @@ tapmat <- tap_read(tap_f)
 
 pepeffect_dir <- file.path(res_dir, 'pepeffect')
 f             <- file.path(pepeffect_dir,
-                           'dataset.deephlaffy.tsv.gz')
+                           'dataset.tinyhlanet.tsv.gz')
 x             <- read.table(f, sep = '\t', header = T,
                             stringsAsFactors = F)
 
@@ -186,9 +186,8 @@ pep_bdf <- local({
 })
 
 set.seed(1)
-print(system.time({
-    boruta_res <- Boruta(good ~ ., pep_bdf)
-}))
+boruta_res <- Boruta(good ~ ., pep_bdf)
+# boruta_res <- readRDS("pepeffect-boruta-res.rds")
 
 ccode <- c("lightgoldenrod1", "cornflowerblue", "indianred1", "grey80")
 

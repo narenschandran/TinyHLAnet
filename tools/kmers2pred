@@ -46,7 +46,7 @@ fi
 
 # Determine output directory
 if [ -z "$3" ]; then
-    out_dir=$(pwd)/deephlaffy-predictions
+    out_dir=$(pwd)/tinyhlanet-predictions
 else
     out_dir="$3"
 fi
@@ -130,6 +130,10 @@ if [ ! -d "$pred_dir" ]; then
 fi
 
 CURR_SCR_DIR=$(dirname "${BASH_SOURCE[0]}")
-DEEPHLAFFY="${CURR_SCR_DIR}/../deephlaffy.py"
+TINYHLANET="${CURR_SCR_DIR}/../tinyhlanet.py"
 outfname="${allele_str}"
-python3 "$DEEPHLAFFY" --no-overwrite -f "$outfname" -o "$pred_dir" "$inpf"
+
+if [ -z "$PY" ]; then
+    PY='python'
+fi
+"$PY" "$TINYHLANET" --no-overwrite -f "$outfname" -o "$pred_dir" "$inpf"

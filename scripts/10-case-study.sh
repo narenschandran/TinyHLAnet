@@ -13,9 +13,9 @@ else
     PY="python"
 fi
 
-DEEPHLAFFY="${PROJROOT}/deephlaffy.py"
-PROTEOME_SCAN="${PROJROOT}/proteome-scan"
-ESCAPE_MUTANTS="${PROJROOT}/escape-mutants.py"
+TINYHLANET="${PROJROOT}/tinyhlanet.py"
+PROTEOME_SCAN="${PROJROOT}/tinyhlanet-scan"
+ESCAPE_MUTANTS="${PROJROOT}/tinyhlanet-escape.py"
 case_dir="${PROJROOT}/results/03-case-study"
 
 sars_cov2_dir="${case_dir}"
@@ -78,4 +78,4 @@ intstudy_f="${sars_cov2_data_dir}/interaction-study.tsv"
 
 cat "${sars_cov2_data_dir}/escape-study.tsv" <(zcat "${sars_cov2_dir}/immune-escape/escape-mutants.tsv.gz" | awk 'NR > 1 {print $1"\t"$2}') > "$intstudy_f"
 
-"$PY" "$DEEPHLAFFY" -X -E -o "${sars_cov2_dir}/mutant-interactions" -f "mutant-interactions" "$intstudy_f"
+"$PY" "$TINYHLANET" -X -E -o "${sars_cov2_dir}/mutant-interactions" -f "mutant-interactions" "$intstudy_f"

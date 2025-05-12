@@ -67,7 +67,7 @@ fs_datf_fetch <- function(d, f_types = NULL) {
 
 bench_results_load <- function(fs_datf) {
     avail_methods <- c("deephlaffy", "mhcflurry", "netmhcpan",
-                       "transphla", "mixmhcpred")
+                       "transphla", "mixmhcpred", "tinyhlanet")
     stopifnot(c("method", "file", "benchmark") %in% colnames(fs_datf))
     stopifnot(all(fs_datf$method %in% avail_methods))
     stopifnot(!anyDuplicated(fs_datf$method))
@@ -93,6 +93,8 @@ bench_results_load <- function(fs_datf) {
 # If [3] & [4] do not exist, they will be substituted based on other data.
 
 deephlaffy_read <- function(f) read.table(f, sep = '\t', header = T, stringsAsFactors = F)
+tinyhlanet_read <- deephlaffy_read
+
 
 mhcflurry_read <- function(f) {
     y <- read.table(f, sep = ',', header = T, stringsAsFactors = F)

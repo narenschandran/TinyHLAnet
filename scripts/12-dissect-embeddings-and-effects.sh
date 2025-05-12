@@ -30,8 +30,8 @@ for f in "${datasets_dir}/"*.tsv.xz; do
 done >> "$input_f"
 xz -9 "$input_f"
 
-DEEPHLAFFY="${BIN_DIR}/deephlaffy-run.sh"
+TINYHLANET="${BIN_DIR}/tinyhlanet-run.sh"
 
-bash "${DEEPHLAFFY}" 'extended' "$input_xz" "${res_dir}/pepeffect"
+bash "${TINYHLANET}" 'extended' "$input_xz" "${res_dir}/pepeffect"
 
 "$PY" "${SCRIPT_DIR}/embeddings-extract.py"

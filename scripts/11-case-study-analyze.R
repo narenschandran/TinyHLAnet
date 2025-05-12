@@ -164,7 +164,7 @@ library(pheatmap)
 library(RColorBrewer)
 
 
-rdylbu_r <- colorRampPalette(rev(brewer.pal(11, "RdYlBu")))
+rdylbu_r <- colorRampPalette(rev(brewer.pal(11, "RdBu")))
 ph <- local({
     br <- seq(-0.1, 0.1, 0.005)
     tmp <- pheatmap

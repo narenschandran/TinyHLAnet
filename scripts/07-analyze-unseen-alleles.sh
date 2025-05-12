@@ -5,14 +5,14 @@ SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
 PROJROOT="${SCRIPT_DIR}/.."
 BIN_DIR="${PROJROOT}/bin"
 
-DEEPHLAFFY="${BIN_DIR}/deephlaffy-quickrun.sh"
+TINYHLANET="${BIN_DIR}/tinyhlanet-quickrun.sh"
 
 d="${PROJROOT}/results/01-model-tuning/04-unseen-alleles"
 f="${d}/excluded.tsv.xz"
 
-# bash "$DEEPHLAFFY" "$f" "$d"
+bash "$TINYHLANET" "$f" "$d"
 
-outf="${d}/excluded.deephlaffy.tsv"
+outf="${d}/excluded.tinyhlanet.tsv.gz"
 echo "$outf"
 
 out_tiff="${d}/excluded-performance.tiff"

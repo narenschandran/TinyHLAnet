@@ -5,7 +5,7 @@ PROJROOT="${SCRIPT_DIR}/.."
 BIN_DIR="${PROJROOT}/bin"
 
 MHCFLURRY="${BIN_DIR}/mhcflurry-run.sh"
-DEEPHLAFFY="${BIN_DIR}/deephlaffy-quickrun.sh"
+TINYHLANET="${BIN_DIR}/tinyhlanet-quickrun.sh"
 TPHLA="${BIN_DIR}/transphla-quickrun.sh"
 NPAN="${BIN_DIR}/netmhcpan-run.sh"
 
@@ -28,48 +28,48 @@ for d in "${bench_datadir}/"*; do
         basef=$(basename "$f" '.tsv')
         odir="${bench_resdir}/${dbase}"
         mkdir -p "$odir"
-        bash "$DEEPHLAFFY" "$f" "${odir}"
-        bash "$MHCFLURRY" "$f" "${odir}"
-        bash "$NPAN" "$f" "${odir}" "${bench_tmpdir}/netmhcpan/${dbase}/${basef}"
+        bash "$TINYHLANET" "$f" "${odir}"
+        # bash "$MHCFLURRY" "$f" "${odir}"
+        # bash "$NPAN" "$f" "${odir}" "${bench_tmpdir}/netmhcpan/${dbase}/${basef}"
 
-        # TransPHLA requires a lot of resources for 1 million datapoints,
-        # so we split it into two 500k files.
-        if [ "$basef" = 'peps-6' ]; then
-            echo "$basef"
-            tphla_tmp="${bench_tmpdir}/transphla/${dbase}/${basef}"
-            tphla_tmpa="${tphla_tmp}a"
-            mkdir -p "$tphla_tmpa"
-            tphla_f1="${tphla_tmpa}/peps-6a.tsv"
-            head -1 "$f" > "$tphla_f1"
-            awk 'NR > 1' "$f" | head -500000 >> "$tphla_f1"
-            bash "$TPHLA" "$tphla_f1" "${tphla_tmpa}" "${tphla_tmpa}"
+        # # TransPHLA requires a lot of resources for 1 million datapoints,
+        # # so we split it into two 500k files.
+        # if [ "$basef" = 'peps-6' ]; then
+        #     echo "$basef"
+        #     tphla_tmp="${bench_tmpdir}/transphla/${dbase}/${basef}"
+        #     tphla_tmpa="${tphla_tmp}a"
+        #     mkdir -p "$tphla_tmpa"
+        #     tphla_f1="${tphla_tmpa}/peps-6a.tsv"
+        #     head -1 "$f" > "$tphla_f1"
+        #     awk 'NR > 1' "$f" | head -500000 >> "$tphla_f1"
+        #     bash "$TPHLA" "$tphla_f1" "${tphla_tmpa}" "${tphla_tmpa}"
 
-            tphla_tmpb="${tphla_tmp}b"
-            mkdir -p "$tphla_tmpb"
-            tphla_f2="${tphla_tmpb}/peps-6b.tsv"
-            head -1 "$f" > "$tphla_f2"
-            awk 'NR > 1' "$f" | tail -500000 >> "$tphla_f2"
-            bash "$TPHLA" "$tphla_f2" "${tphla_tmpb}" "${tphla_tmpb}"
-            cat "${tphla_tmpa}/peps-6a.transphla.time" \
-                "${tphla_tmpb}/peps-6b.transphla.time" |
-            awk 'BEGIN {
-                tot_time = 0
-                ram_usage = 0
-            } {
-                tot_time = tot_time + $1
-                if ($2 > ram_usage) {
-                    ram_usage =$2
-                }
-            } END {
-                print tot_time" "ram_usage
-            }' > "${odir}/peps-6.transphla.time"
+        #     tphla_tmpb="${tphla_tmp}b"
+        #     mkdir -p "$tphla_tmpb"
+        #     tphla_f2="${tphla_tmpb}/peps-6b.tsv"
+        #     head -1 "$f" > "$tphla_f2"
+        #     awk 'NR > 1' "$f" | tail -500000 >> "$tphla_f2"
+        #     bash "$TPHLA" "$tphla_f2" "${tphla_tmpb}" "${tphla_tmpb}"
+        #     cat "${tphla_tmpa}/peps-6a.transphla.time" \
+        #         "${tphla_tmpb}/peps-6b.transphla.time" |
+        #     awk 'BEGIN {
+        #         tot_time = 0
+        #         ram_usage = 0
+        #     } {
+        #         tot_time = tot_time + $1
+        #         if ($2 > ram_usage) {
+        #             ram_usage =$2
+        #         }
+        #     } END {
+        #         print tot_time" "ram_usage
+        #     }' > "${odir}/peps-6.transphla.time"
 
-            head -1 "${tphla_tmpa}/peps-6a.transphla.tsv" > "${odir}/peps-6.tsv"
-            awk 'NR > 1' "${tphla_tmpa}/peps-6a.transphla.tsv" >> "${odir}/peps-6.tsv"
-            awk 'NR > 1' "${tphla_tmpb}/peps-6b.transphla.tsv" >> "${odir}/peps-6.tsv"
-        else
-            bash "$TPHLA" "$f" "${odir}" "${bench_tmpdir}/transphla/${dbase}/${basef}"
-        fi
+        #     head -1 "${tphla_tmpa}/peps-6a.transphla.tsv" > "${odir}/peps-6.tsv"
+        #     awk 'NR > 1' "${tphla_tmpa}/peps-6a.transphla.tsv" >> "${odir}/peps-6.tsv"
+        #     awk 'NR > 1' "${tphla_tmpb}/peps-6b.transphla.tsv" >> "${odir}/peps-6.tsv"
+        # else
+        #     bash "$TPHLA" "$f" "${odir}" "${bench_tmpdir}/transphla/${dbase}/${basef}"
+        # fi
     done
 done
 
@@ -90,29 +90,29 @@ run_par() {
 }
 
 # Speed benchmarking for netMHCpan (multi-threaded)
-for d in "${par_datadir}/"*; do
-    dbase=$(basename "$d")
-    odir="${bench_tmpdir}/netmhcpan-parallel/${dbase}"
-
-    # Has the list of files that will be used for the
-    # parallelization script.
-    tmpfile="${par_base_idir}/${dbase}.txt"
-    lfile="${par_odir}/${dbase}.time"
-
-    # Is the parallelization script.
-    tmpscr="${par_cmd_dir}/${dbase}.sh"
-
-    echo "$d"
-    for f in "${d}/"*.txt; do
-        fbase=$(basename "$f" '.txt')
-        tmpdir="${bench_tmpdir}/netmhcpan-parallel/${fbase}"
-        echo bash "$NPAN" "$f" "${odir} ${tmpdir}"
-    done > "$tmpfile"
-    echo cat "$tmpfile" '| parallel -j16' > "$tmpscr"
-    mkdir -p "$odir"
-    mkdir -p "$tmpdir"
-    /usr/bin/time -o "${lfile}" --format="%e %M" bash "$tmpscr"
-done
+# for d in "${par_datadir}/"*; do
+#     dbase=$(basename "$d")
+#     odir="${bench_tmpdir}/netmhcpan-parallel/${dbase}"
+# 
+#     # Has the list of files that will be used for the
+#     # parallelization script.
+#     tmpfile="${par_base_idir}/${dbase}.txt"
+#     lfile="${par_odir}/${dbase}.time"
+# 
+#     # Is the parallelization script.
+#     tmpscr="${par_cmd_dir}/${dbase}.sh"
+# 
+#     echo "$d"
+#     for f in "${d}/"*.txt; do
+#         fbase=$(basename "$f" '.txt')
+#         tmpdir="${bench_tmpdir}/netmhcpan-parallel/${fbase}"
+#         echo bash "$NPAN" "$f" "${odir} ${tmpdir}"
+#     done > "$tmpfile"
+#     echo cat "$tmpfile" '| parallel -j16' > "$tmpscr"
+#     mkdir -p "$odir"
+#     mkdir -p "$tmpdir"
+#     /usr/bin/time -o "${lfile}" --format="%e %M" bash "$tmpscr"
+# done
 
 PLOTTING="${SCRIPT_DIR}/benchmark-plots.R"
 Rscript "$PLOTTING"

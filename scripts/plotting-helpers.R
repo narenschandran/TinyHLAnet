@@ -23,7 +23,7 @@ tiff_close <- function(f, crop = T) {
 
 method_names <- function(x) {
     mnames <- c(
-        "deephlaffy"  = "TinyHLAnet",
+        "tinyhlanet"  = "TinyHLAnet",
         "mhcflurry"   = "MHCflurry 2",
         "mixmhcpred"  = "MixMHCpred",
         "netmhcpan"   = "netMHCpan 4.1",
@@ -36,7 +36,7 @@ method_names <- function(x) {
 
 method_colors <- function(x) {
     mcols <- c(
-      "deephlaffy" = "#E16173",
+      "tinyhlanet" = "#E16173",
       "mhcflurry"  = "#729FCF",
       "mixmhcpred" = "black",
       "netmhcpan"  = "#6B5E9B",

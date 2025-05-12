@@ -10,7 +10,7 @@ base_d <- file.path(bench_dir, 'results')
 
 ds <- file.path(base_d, c("train", "test", "val"))
 
-methods <- c("deephlaffy", "mhcflurry", "netmhcpan", "transphla")
+methods <- c("tinyhlanet", "mhcflurry", "netmhcpan", "transphla")
 
 fs_lst <- local({
     tmp <- list.files(ds, full.names = T, pattern = '[.]tsv$|[.]csv$|[.]tsv.gz$')
@@ -269,7 +269,7 @@ l10p1 <- function(x) log10(as.numeric(x)+1)
 speed_file <- file.path(plots_dir, 'speed-comparison.tiff')
 tiff_open(speed_file, res = 550)
 par(family = 'symbol')
-speed_methods <- c('deephlaffy', 'mhcflurry', 'netmhcpan',
+speed_methods <- c('tinyhlanet', 'mhcflurry', 'netmhcpan',
                    'netmhcpan_p', 'transphla')
 
 for (method in speed_methods) {
@@ -356,7 +356,7 @@ test_f_get <- function(f) {
 }
 
 test_bind_lst <- list(
-    deephlaffy = subset(deephlaffy_read(test_f_get(fs_lst$deephlaffy)),
+    tinyhlanet = subset(tinyhlanet_read(test_f_get(fs_lst$tinyhlanet)),
                         binder > (-1), select = c("hla", "binder", "pred_binder")),
     mhcflurry  = subset(mhcflurry_read(test_f_get(fs_lst$mhcflurry)),
                         binder > (-1), select = c("allele", "binder", "pred_binder"))
@@ -385,7 +385,7 @@ f1_datf <- as.data.frame(lapply(test_bind_lst, function(datf) {
 {
 alauc_file <- file.path(plots_dir, 'allelewise-auc-comparison.tiff')
 tiff_open(alauc_file, res = 550)
-plot(deephlaffy ~ mhcflurry, auc_datf,
+plot(tinyhlanet ~ mhcflurry, auc_datf,
      xlab = "TinyHLAnet AUC", ylab = "MHCflurry 2 AUC", pch = 21,
      bg = adjustcolor('#6eaf5e', alpha.f = 0.5),
      xlim = c(0.95, 1), ylim = c(0.95, 1)
@@ -397,7 +397,7 @@ tiff_close(alauc_file)
 {
 alprauc_file <- file.path(plots_dir, 'allelewise-prauc-comparison.tiff')
 tiff_open(alprauc_file, res = 550)
-plot(deephlaffy ~ mhcflurry, prauc_datf,
+plot(tinyhlanet ~ mhcflurry, prauc_datf,
      xlab = "TinyHLAnet PRAUC", ylab = "MHCflurry 2 PRAUC", pch = 21,
      bg = adjustcolor("#8981a7", alpha.f = 0.5),
      xlim = c(0.9, 1), ylim = c(0.9, 1)
@@ -409,7 +409,7 @@ tiff_close(alprauc_file)
 {
 f1_file <- file.path(plots_dir, 'allelewise-f1-comparison.tiff')
 tiff_open(f1_file, res = 550)
-plot(deephlaffy ~ mhcflurry, f1_datf,
+plot(tinyhlanet ~ mhcflurry, f1_datf,
      xlab = expression("TinyHLAnet max "*"F"[1]*" score"),
      ylab = expression("MHCflurry 2 max "*"F"[1]*" score"),
      pch = 21, bg = adjustcolor('#bf8502', alpha.f = 0.5),
