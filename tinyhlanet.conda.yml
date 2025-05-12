@@ -1,4 +1,4 @@
-name: deephlaffy
+name: tinyhlanet
 channels:
   - conda-forge
   - defaults

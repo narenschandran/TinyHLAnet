@@ -1,8 +1,8 @@
 TinyHLAnet: A light-weight 3D structure-aware architecture for rapid and explainable identification of CD8+ T-cell antigens
 ====
-## Quick start guide: Before you run anything.
+## Setting up dependencies
 
-Please ensure that the `python` executable that will be called has access to the required run-time dependences (Check the `Setting up a Python/Conda environment` subsection for details). If you want the quickest way to setup dependencies, then you can use Conda as follows:
+Please ensure that the `python` executable that will be called has access to the required run-time dependences. If you want the quickest way to setup dependencies, then you can use Conda as follows:
 
 ```
 conda config --add channels conda-forge
@@ -10,7 +10,7 @@ conda config --set channel_priority strict
 conda env create -f tinyhlanet.conda.yml
 ```
 
-Once the environment is successfully installed, you can activate the environment using the `conda activate tinyhlanet` command and deactivate the same using the command `conda deactivate`. Ensure that the `tinyhlanet` environment is activated before running the other commands mentioned below.
+Once the environment is successfully installed, you can activate the environment using the `conda activate tinyhlanet` command and deactivate the same using the command `conda deactivate`. Ensure that the `tinyhlanet` environment is activated before running the other commands mentioned below. If you want to setup a custom `pyenv`, you can use the packages listed in `prereq/requirements.txt` to guide you installation.
 
 
 Once the environment/packages are setup the following commands need to be run exactly once before any predictions can be made:
