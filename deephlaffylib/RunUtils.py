@@ -26,14 +26,9 @@ prereq_dir = os.path.join(projroot, 'prereq')
 mdl_dir    = os.path.join(projroot, 'models')
 
 
-# This is the best model from our tuning experiments
-# mdl_f     = os.path.join(mdl_dir, 'deephlaffy', 'both',
-#                          'deephlaffy-simple-posmodel-effects-c1fd9d94',
-#                          'seed-00', 'model.keras')
-
-mdl_f     = os.path.join(mdl_dir, 'deephlaffy', 'both',
-                         'deephlaffy-simple-posmodel-effects-1fc66164',
-                         'seed-00', 'model.keras')
+mdl_f      = os.path.join(mdl_dir, 'deephlaffy', 'both',
+                          'deephlaffy-simple-posmodel-effects-1fc66164',
+                          'seed-02', 'model.keras')
 
 
 #------------------------------------------------------------------------------#
@@ -214,6 +209,16 @@ def load_and_check_input(f):
 def check_input(x):
     ''' Wrapper function to check whether an input DataFrame can be used as a
         valid input to the default DeepHLAffy model '''
+
+    if ('hla' in x.columns) and ('allele' not in x.columns):
+        cls = []
+        for col in list(x.columns):
+            if col == 'hla':
+                cls.append('allele')
+            else:
+                cls.append(col)
+        x.columns = cls
+
     # Ensure that the necessary columns are present to compute inputs
     if 'allele' not in x.columns:
         raise ValueError("Input needs to have an 'allele' column")
@@ -357,5 +362,5 @@ def single_mut_gen(peptide, allele = None, aminos = None):
                 'orig_peptide' : peptide
             })
             if allele is not None:
-                res.insert(0, 'allele', allele)
+                res.insert(0, 'hla', allele)
     return res

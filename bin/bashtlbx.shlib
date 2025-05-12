@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 # Collection of some of my commonly used bash functions
-# Author: Naren C S <narenschandran@gmail.com> <narenc@iisc.ac.in>
+# Author: Naren C S <narenschandran@gmail.com>
 
 
 # Some notes on trying to find script location for sourcing:
@@ -62,7 +62,7 @@ dir_check() {
 #' 1) File path
 #' 2) [Optional] File description
 file_require() {
-    if [ ! -f "$1" ]; then
+    if [ ! -e "$1" ]; then
         if [ ! -z "$2" ]; then
             pause_then_exit "The [$2] file [$1] does not exist."
         else
@@ -155,23 +155,3 @@ simple_download_and_check() {
     fi
     echo "$downloaded_file"
 }
-
-rnaseq_shlib_load() {
-    local rnaseq_shlib_path="${shlib_dir}/bashtlbx-rnaseq.shlib"
-    file_require "$rnaseq_shlib_path" "BASHTLBX RNAseq module"
-    source "$rnaseq_shlib_path"
-}
-
-geo_shlib_load() {
-    local geo_shlib_path="${shlib_dir}/bashtlbx-geo.shlib"
-    file_require "$geo_shlib_path" "BASHTLBX GEO module"
-    source "$geo_shlib_path"
-}
-
-
-structures_shlib_load() {
-    local structures_shlib_path="${shlib_dir}/bashtlbx-structures.shlib"
-    file_require "$structures_shlib_path" "BASHTLBX Structures module"
-    source "$structures_shlib_path"
-}
-

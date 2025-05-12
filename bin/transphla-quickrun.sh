@@ -43,4 +43,36 @@ pfile="${tmpdir}/${basef}.transphla.pep.fasta"
 lfile="$odir/${basef}.transphla.time"
 /usr/bin/time -o "$lfile" --format="%e %M" "$PY" "$TPY" --peptide_file "$pfile" --HLA_file "$hfile" --output_dir "$tmpdir"
 
-cat "${tmpdir}/predict_results.csv" | tr ',' '\t' > "$odir/${basef}.transphla.tsv"
+pred_file="${tmpdir}/predict_results.csv"
+main_outf="${odir}/${basef}.transphla.tsv"
+
+echo "$f"
+echo "$pred_file"
+echo "$main_outf"
+Rscript -e "
+f <- '$f'
+procf <- '$pred_file'
+outf  <- '$main_outf'
+
+readf <- function(f) {
+    x <- read.table(f, sep = '\t', header = T)
+    x[['pmhc_key']] <- with(x, paste(allele, peptide))
+    x
+}
+
+readf2 <- function(f) {
+    x <- read.table(f, sep = ',', header = T)
+    x[['pmhc_key']] <- with(x, paste(HLA, peptide))
+    x
+}
+
+x <- readf(f)
+y <- readf2(procf)
+
+ind <- match(x[['pmhc_key']], y[['pmhc_key']])
+z <- y[ind,]
+
+x[,c('y_prob')] <- z[,c('y_prob')]
+
+write.table(x, outf, sep = '\t', row.names = F, quote = F)
+"

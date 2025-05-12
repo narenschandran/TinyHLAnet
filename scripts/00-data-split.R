@@ -155,19 +155,4 @@ exl_data <- local({
 odir2 <- file.path(projroot, 'results', '01-model-tuning', '04-unseen-alleles')
 
 if (!dir.exists(odir2)) dir.create(odir2, recursive = T)
-
 writef(exl_data, file.path(odir2, 'excluded.tsv.xz'))
-
-nff <- file.path(prereq_dir, 'netmhcpan-keys.txt.xz')
-nf <- readLines(nff)
-
-
-tff <- file.path(prereq_dir, 'transphla-keys.txt.xz')
-tf <- readLines(tff)
-
-train_keys <- sort(unique(c(nf, train_data$pmhc_key, tf)))
-
-bdir <- file.path(projroot, 'results', '02-benchmark')
-if (!dir.exists(bdir)) dir.create(bdir, recursive = T)
-
-writeLines(train_keys, file.path(bdir, 'exclude-keys.txt'))
