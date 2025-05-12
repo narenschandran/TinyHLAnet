@@ -1,0 +1,42 @@
+#!/usr/bin/env Rscript
+
+fcon <- file('stdin', 'r')
+lines <- readLines(fcon)
+x <- read.table(text = lines, sep = '\t', header = T,
+                stringsAsFactors = F)
+close(fcon)
+
+rankfn <- function(x, flip = F) {
+    if (flip) x <- (-1) * x
+    rank(x, ties.method = 'min')
+}
+spfn <- function(x) lapply(strsplit(x, ","), as.numeric)
+
+datmat <- cbind(
+    prob = spfn(setNames(x$bindprob, x$protein)),
+    aff  = spfn(setNames(x$bindaff, x$protein))
+)
+
+# We rank each protein by both affinity & probability
+rankmat <- local({
+    tmp <- do.call("cbind", apply(datmat, 2, function(x) {
+        lapply(x, rankfn, flip = T)
+    }))
+    colnames(tmp) <- paste0(colnames(tmp), "_rank")
+    ult_rank <- lapply(apply(tmp, 1, Reduce, f = `*`), rankfn)
+    cbind(tmp, rank = ult_rank)
+})
+
+
+stopifnot(all(x$protein == rownames(rankmat)))
+
+rank_str <- apply(rankmat, 2, function(x) {
+    sapply(x, paste, collapse = ",")
+})
+
+dat <- data.frame(
+    x,
+    rank_str
+)
+
+write.table(dat, sep = '\t', row.names = F, quote = F)

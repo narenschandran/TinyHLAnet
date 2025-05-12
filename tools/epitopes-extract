@@ -33,6 +33,32 @@ writefn() {
 #------------------------------------------------#
 #                Input validation                #
 #------------------------------------------------#
+
+odir="proteome-scanning"
+acutoff=0.2
+bcutoff=0.5
+fbase="epitopes"
+
+while getopts "a:b:f:l:o:" option; do
+    case $option in
+        a)
+            acutoff="$OPTARG" ;;
+        b)
+            bcutoff="$OPTARG" ;;
+        f)
+            fbase="$OPTARG" ;;
+        l)
+            al_lst="$OPTARG" ;;
+        o)
+            odir="$OPTARG"   ;;
+        \?)
+            echo "Error: Illegal option"
+            exit 1;;
+    esac
+done
+
+shift $((OPTIND-1))
+
 fasta_f="$1"
 scan_f="$2"
 
@@ -50,28 +76,21 @@ if [ ! -e "$fasta_f" ] || [ ! -e "$scan_f" ]; then
     exit 2
 fi
 
-if [ -z "$3" ]; then
-    cutoff=0.5
-else
-    cutoff="$3"
-fi
-
 float_pat='^[0-9]+[.]*[0-9]*$'
-if ! [[ "$cutoff" =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
-    err_echo "The input cutoff is not a valid floating point number"
+if ! [[ "$acutoff" =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
+    err_echo "The input acutoff is not a valid floating point number"
     exit 3
 fi
 
-# Ready the output directory
-if [ ! -z "$4" ]; then
-    odir="$4"
-    [ ! -d "$odir" ] && mkdir -p "$odir"
-    if [ -z "$5" ]; then
-        fbase="epitopes"
-    else
-        fbase="$5"
-    fi
+if ! [[ "$bcutoff" =~ ^[+-]?[0-9]+\.?[0-9]*$ ]]; then
+    err_echo "The input bcutoff is not a valid floating point number"
+    exit 3
 fi
+
+
+# Ready the output directory
+odir="${odir}/aff${acutoff}_bind${bcutoff}"
+[ ! -d "$odir" ] && mkdir -p "$odir"
 
 # Check [4]: Ensure that gawk is available somewhere
 gawk_chk=$(command -v gawk)
@@ -85,7 +104,7 @@ chksum_compute() {
 }
 
 if [ ! -z "$odir" ]; then
-    outf="${odir}/${fbase}.fa.gz"
+    outf="${odir}/${fbase}.tsv.gz"
     outf_lock="${odir}/${fbase}.scan.md5"
     write_flag=1
 else
@@ -119,7 +138,7 @@ fi
 # This is justified by the expectation that some
 # proteome scanning might be carried out only
 # for subsets of proteins.
-gawk -F'\t' -vK=9 -vfasta_f=<(readfn "${fasta_f}") -vcutoff="$cutoff" '
+gawk -F'\t' -vK=9 -vfasta_f=<(readfn "${fasta_f}") -vacutoff="$acutoff" -vbcutoff="$bcutoff" '
 
 function trimws(s) {
     sub(/^[[:space:]]+/, "", s)
@@ -150,6 +169,7 @@ BEGIN {
     curr_hd  = ""
     curr_seq = ""
     if (K == "") { K = 9 }
+    print "protein\tlen\tepitope_startpos\tepitope\tbindprob\tbindaff\trank\trankp"
 }
 
 NR > 1 {
@@ -158,17 +178,31 @@ NR > 1 {
         print "The ID: ["prot_id"] is not present in the FASTA file"
         exit 1
     }
+
+    # This is for binding probability
     split($2, window_arr, ",")
-    exp_wlen = len_arr[prot_id] - K + 1
+    plen = len_arr[prot_id]
+    exp_wlen = plen - K + 1
     if (exp_wlen != length(window_arr)) {
         print "There is a length mismatch between the FASTA file and the proteome scanning input for ["prot_id"]"
         exit 2
     }
 
-    print ">"prot_id
+    # This is for binding affinity
+    split($3, aff_arr, ",")
+
+    # This is for intra-protein epitope rank
+    split($6, rank_arr, ",")
+    nranks = length(rank_arr)
+
     for (i = 1; i <= exp_wlen; i++) {
-        v = window_arr[i]
-        if (v > cutoff) { print substr(seq_arr[prot_id], i, K) }
+        b = window_arr[i]
+        a = aff_arr[i]
+        if ((a >= acutoff) && (b >= bcutoff)) {
+            r = rank_arr[i]
+            rp = sprintf("%0.2f", rank_arr[i] * 100 / nranks)
+            print prot_id"\t"plen"\t"i"\t"substr(seq_arr[prot_id], i, K)"\t"b"\t"a"\t"r"\t"rp
+        }
     }
 }
 ' <(readfn "$scan_f") | writefn "$write_flag" > "$outf"

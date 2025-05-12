@@ -6,41 +6,58 @@ KMERS_GET="${PSCAN_DIR}/tools/kmers-get"
 KMERS2PRED="${PSCAN_DIR}/tools/kmers2pred"
 PROB_MAPPER="${PSCAN_DIR}/tools/prob-map"
 EPITOPES_EX="${PSCAN_DIR}/tools/epitopes-extract"
+EPIRANKER="${PSCAN_DIR}/tools/epiranker"
 
 print_usage() {
     local script_name=$(basename "${BASH_SOURCE[0]}")
-    echo "Usage: $script_name <fasta-file> <allele-list> <output-director>"
+    echo "Usage: $script_name -l <allele-list> -o <output-directory> <fasta-file>" >&2
 }
 err_echo() {
     local script_name=$(basename "${BASH_SOURCE[0]}")
     echo "$script_name" "$1" >&2
 }
 
-if [ ! -f "$KMERS_GET" ] || [ ! -f "$KMERS2PRED" ] || [ ! -f "$PROB_MAPPER" ]; then
+if [ ! -f "$KMERS_GET" ] || [ ! -f "$KMERS2PRED" ] || [ ! -f "$PROB_MAPPER" ] || \
+   [ ! -f "$EPITOPES_EX" ] || [ ! -f "$EPIRANKER" ]; then
     err_echo "Some of the scripts required for running the Proteome scan are missing"
     print_usage
     exit 1
 fi
 
+# Defaults
+odir="proteome-scanning"
+acutoff=0.2
+bcutoff=0.5
 
+while getopts "a:b:l:o:" option; do
+    case $option in
+        a) 
+            acutoff="$OPTARG" ;;
+        b) 
+            bcutoff="$OPTARG" ;;
+        l)
+            al_lst="$OPTARG" ;;
+        o)
+            odir="$OPTARG"   ;;
+        \?)
+            echo "Error: Illegal option"
+            exit 1;;
+    esac
+done
+
+shift $((OPTIND-1))
 fasta_f="$1"
-al_lst="$2"
+
 if [ -z "$fasta_f" ] || [ -z "$al_lst" ] || [ ! -e "$fasta_f" ] || [ ! -e "$al_lst" ]; then
     err_echo "One or more of the file inputs are missing"
     print_usage
     exit 2
 fi
 
-odir="$3"
-if [ -z "$odir" ]; then
-    odir='proteome-scan'
-else
-    odir="$3"
-fi
-
 "$KMERS_GET" "$fasta_f" "$odir"
 if [ $? -ne 0 ]; then
     err_echo "Something went wrong when generating kmers from the input FASTA file"
+    print_usage
     exit 3
 fi
 
@@ -61,7 +78,11 @@ for allele in $(cat "$al_lst"); do
     if [ $? -ne 0 ]; then
         exit 5
     fi
-    
-    scan_f="${odir}/prot-scan/${allele_str}.scan.gz"
-    "$EPITOPES_EX" "$fasta_f" "$scan_f" 0.5 "${odir}/epitopes" "${allele_str}"
+
+    # If no cutoff value is given, then don't extract the eptiopes
+    if [ ! -z "$acutoff" ] || [ ! -z "$bcutoff" ]; then
+        echo "Extracting eptiopes at cutoffs: ($acutoff, $bcutoff)"
+        scan_f="${odir}/prot-scan/${allele_str}.scan.gz"
+        "$EPITOPES_EX" -a "$acutoff" -b "$bcutoff" -f "${allele_str}" -o "${odir}/epitopes" "$fasta_f" "$scan_f"
+    fi
 done
