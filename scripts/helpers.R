@@ -175,6 +175,31 @@ rank_regperf  <- function(x) rank_perf_(x, reg_meas , T)
 rank_bindperf <- function(x) rank_perf_(x, bind_meas, T)
 rank_perf     <- function(x) rank_perf_(x, all_meas , T)
 
+summ_perf_ <- function(perf_datf, measures) {
+    # We are interested in general model performance, so
+    # we remove identification of individual model instances
+    # when we report information.
+    excl_cols <- c("time", "seed_id", "model_id", "epoch")
+    perf_datf <- perf_datf[, !(colnames(perf_datf) %in% excl_cols)]
+    perf_sp   <- split(perf_datf, perf_datf$model_key)
+    res_datf <- do.call("rbind.data.frame", lapply(perf_sp, function(sp) {
+        dat <- sp[1,]
+        stb <- apply(do.call("cbind", lapply(sp[,measures], is.na)), 1, prod)
+        for (meas in measures) {
+            dat[[meas]] <- round(median(sp[[meas]], na.rm = T), 3)
+            dat[[paste0("var", meas)]] <- var(sp[[meas]], na.rm = T)
+        }
+        dat$stable  <- sum(stb)
+        dat$nmodels <- nrow(sp)
+        dat
+    }))
+    rownames(res_datf) <- NULL
+    res_datf
+}
+
+summ_regperf  <- function(x) summ_perf_(x, reg_meas)
+summ_bindperf <- function(x) summ_perf_(x, bind_meas)
+summ_perf <- function(x) summ_perf_(x, all_meas)
 
 #' Generate summary matrix
 mat_gen <- function(datf, split_cols, data_col = "SRCC", fn = "identity") {

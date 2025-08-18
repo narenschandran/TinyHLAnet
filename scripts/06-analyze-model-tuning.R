@@ -23,20 +23,97 @@ perf <- local({
     #deal_with_nan(tmp2)
 })
 
-reg_perf  <- rank_regperf(subset(perf, data_type == "regressand"))
-both_perf <- rank_perf(subset(perf, data_type == "both"))
+reg_perf  <- subset(perf,
+                    (data_type == "regressand") &
+                    (contacts %in% c("allpairs", "simple")))
+both_perf <- subset(perf,
+                    (data_type == "both") &
+                    (contacts %in% c("allpairs", "simple")))
 
-perf_splits <- list(
-    Base       = subset(reg_perf , pos_conf    == "None"),
-    PosActv    = subset(reg_perf , (EnvEmbDim  == "016") &
-                                   (EnvNode    == "016")),
-    PosDimNode = subset(reg_perf , (EnvActvIn  == "Sigmoid") &
-                                   (EnvActvOut == "Sigmoid")),
-    FxActv     = subset(both_perf, (FxEmbDim   == "016") &
-                                   (FxNode     == "016")),
-    FxDimNode  = subset(both_perf, (FxActvIn   == "GELU") &
-                                   (FxActvOut  == "Linear"))
+
+perf_splits_all <- list(
+    Base       = subset(reg_perf,
+                        (effects_conf == "None")     &
+                        (pos_conf     == "None")),
+    PosActv    = subset(reg_perf ,
+                        (BaseEmbDim   == "016")  &
+                        (contacts     == "simple")   &
+                        (EnvEmbDim    == "016")      &
+                        (EnvNode      == "016")),
+
+    PosDimNode = subset(reg_perf,
+                        (BaseEmbDim   == "016")      &
+                        (contacts     == "simple")   &
+                        (EnvActvIn    == "Sigmoid")  &
+                        (EnvActvOut   == "Sigmoid")),
+
+    FxActv     = subset(both_perf,
+                        (BaseEmbDim   == "016")      &
+                        (contacts     == "simple")   &
+                        (FxEmbDim     == "016")      &
+                        (FxNode       == "016")      &
+                        (EnvEmbDim    == "016")      &
+                        (EnvNode      == "128")),
+
+    FxDimNode  = subset(both_perf,
+                        (BaseEmbDim   == "016")      &
+                        (contacts     == "simple")   &
+                        (FxActvIn     == "GELU")     &
+                        (FxActvOut    == "Linear")   &
+                        (EnvEmbDim    == "016")      &
+                        (EnvNode      == "128"))
 )
+
+
+perf_splits_xtra <- list(
+    FxActv2     = subset(both_perf,
+                         (BaseEmbDim   == "016")      &
+                         (contacts     == "simple")   &
+                         (FxEmbDim     == "016")      &
+                         (FxNode       == "016")      &
+                         (EnvEmbDim    == "032")      &
+                         (EnvNode      == "032")),
+
+    FxDimNode2  = subset(both_perf,
+                         (BaseEmbDim   == "016")      &
+                         (contacts     == "simple")   &
+                         (FxActvIn     == "GELU")     &
+                         (FxActvOut    == "Linear")   &
+                         (EnvEmbDim    == "032")      &
+                         (EnvNode      == "032")),
+
+    FxActv3     = subset(both_perf,
+                         (BaseEmbDim   == "016")      &
+                         (contacts     == "simple")   &
+                         (FxEmbDim     == "016")      &
+                         (FxNode       == "016")      &
+                         (EnvEmbDim    == "016")      &
+                         (EnvNode      == "032")),
+
+    FxDimNode3  = subset(both_perf,
+                         (BaseEmbDim   == "016")      &
+                         (contacts     == "simple")   &
+                         (FxActvIn     == "GELU")     &
+                         (FxActvOut    == "Linear")   &
+                         (EnvEmbDim    == "016")      &
+                         (EnvNode      == "032"))
+)
+
+perf_splits <- setNames(lapply(names(perf_splits_all), function(nm) {
+    proc_fn <- if (nm %in% c("Base", "PosActv", "PosDimNode")) {
+        function(x) rank_regperf(summ_regperf(x))
+    } else if (nm %in% c("FxActv")) {
+        function(x) rank_perf(summ_perf(x))
+    } else if (nm %in% c("FxDimNode")) {
+        # Since this is the last step, we use the best models
+        # instead of the median model to select the finalized
+        # TinyHLAnet instance.
+        rank_perf
+    } else {
+        stop()
+    }
+    proc_fn(perf_splits_all[[nm]])
+}), names(perf_splits_all))
 
 perf_cols <- list(
     "Base"       = c("Contacts" , "BaseEmbDim"),
@@ -107,25 +184,35 @@ for (nm in names(perf_mats)) {
 }
 })
 
-
 # Provenance
-prov_lst <- list(
-    'Baseline' = subset(both_perf, (Contacts == "All") &
-                                   (pos_conf == "None") &
-                                   (effects_conf == "None")),
+prov_lst_all <- list(
+    'Baseline' = subset(both_perf,
+        (BaseEmbDim == "016")       &
+        (Contacts == "All")         &
+        (pos_conf == "None")        &
+        (effects_conf == "None")),
 
-    '(+) Contacts' = subset(both_perf, (Contacts == "Observed") &
-                                       (pos_conf == "None") &
-                                       (effects_conf == "None")),
+
+    '(+) Contacts' = subset(both_perf,
+        (BaseEmbDim == "016")       &
+        (Contacts == "Observed")    &
+        (pos_conf == "None")        &
+        (effects_conf == "None")),
 
     '(+) Env. context' = subset(both_perf,
-                                (Contacts == "Observed") &
-                                (pos_conf == "8-sigmoid128_sigmoid53") &
-                                (effects_conf == "None")),
+        (BaseEmbDim == "016")                   &
+        (Contacts == "Observed")                &
+        (pos_conf == "16-sigmoid128_sigmoid53") &
+        (effects_conf == "None")),
 
-    '(+) Effects' = both_perf[1,]
+    '(+) Effects'      = subset(both_perf,
+        (BaseEmbDim == "016")                   &
+        (Contacts == "Observed")                &
+        (pos_conf == "16-sigmoid128_sigmoid53") &
+        (effects_conf == "16-gelu256_linear1"))
 )
 
+prov_lst <- lapply(prov_lst_all, rank_perf)
 
 subsetm <- function(x, select_cols) as.matrix(x[,select_cols, drop = F])
 
@@ -133,6 +220,17 @@ prov <- do.call("rbind", prov_lst)[,all_meas]
 
 prov_dir <- file.path(tune_dir, '03-provenance')
 if (!dir.exists(prov_dir)) dir.create(prov_dir, recursive = T)
+
+prov_datf <- local({
+    tmp <- do.call("rbind", lapply(names(prov_lst), function(nm) {
+        with(prov_lst[[nm]],
+             c(nm, model_key, seed_id))
+    }))
+    colnames(tmp) <- c("Model", "ModelKey", "Seed")
+    as.data.frame(tmp)
+})
+write.table(prov_datf, file.path(prov_dir, 'prov-models.tsv'),
+            sep = '\t', row.names = F, quote = F)
 
 mse_file <- file.path(prov_dir, '01-MSE.tiff')
 tiff_open(mse_file)
@@ -163,11 +261,16 @@ tiff_close(prauc_file)
 
 library(Boruta)
 
-set.seed(0)
-reg_boruta <- Boruta(MSE ~ BaseEmbDim + Contacts + EnvEmbDim + EnvNode + EnvActvIn + EnvActvOut, reg_perf, pValue = 1e-6, maxRuns = 2000)
+fin_reg_perf <- do.call("rbind.data.frame", perf_splits_all[c("Base", "PosActv", "PosDimNode")])
 
 set.seed(0)
-both_boruta <- Boruta(BCE ~ FxEmbDim + FxNode + FxActvIn, both_perf, pValue = 1e-6, maxRuns = 2000)
+reg_boruta <- Boruta(MSE ~ BaseEmbDim + Contacts + EnvEmbDim + EnvNode + EnvActvIn + EnvActvOut, fin_reg_perf, pValue = 1e-6, maxRuns = 2000)
+
+
+fin_both_perf <- do.call("rbind.data.frame",
+    c(perf_splits_all[c("FxActv", "FxDimNode")], perf_splits_xtra))
+set.seed(0)
+both_boruta <- Boruta(BCE ~ FxEmbDim + FxNode + FxActvIn, fin_both_perf, pValue = 1e-6, maxRuns = 2000)
 
 
 ccode <- c("lightgoldenrod1", "cornflowerblue", "indianred1", "grey80")
@@ -185,3 +288,102 @@ tiff_open(both_boruta_fpath, 3500, 3500, 600)
 par(oma = c(4, 3, 3, 3), family = "serif")
 plot(both_boruta, ccode, xlab = NA, ylab = NA, horizontal = T, las = 2)
 tiff_close(both_boruta_fpath)
+
+stopifnot(all(sapply(prov_lst_all, nrow) == 10))
+
+
+{
+bplot_metrics <- c("MSE", "SRCC", "BCE", "AUC", "PRAUC")
+
+metric_spread_f <- file.path(dualtune_dir,
+                            'MetricSpread.tiff')
+
+tiff_open(metric_spread_f, 2250, 4000, 300)
+par(mfrow = c(3, 2), mar = c(10, 5, 3, 3),
+    cex.main = 2, cex.axis = 1.6)
+for (bplot_metric in bplot_metrics) {
+    bplot_dat     <- lapply(prov_lst_all, `[[`, bplot_metric)
+    boxplot(bplot_dat, main = bplot_metric, las = 2)
+}
+tiff_close(metric_spread_f)
+}
+
+
+cols <- c("model_key", "data_type", "seed_id",
+          "BaseEmbDim", "Contacts",
+          "EnvEmbDim", "EnvNode",
+          "EnvActvIn", "EnvActvOut",
+          "FxEmbDim", "FxNode",
+          "FxActvIn", "FxActvOut",
+          "MSE", "SRCC", "BCE", "AUC", "PRAUC")
+
+tmp_splits <- perf_splits_all
+tmp_splits$FxActv <- do.call("rbind.data.frame",
+    list(perf_splits_all$FxActv,
+         perf_splits_xtra$FxActv2,
+         perf_splits_xtra$FxActv3))
+rownames(tmp_splits$FxActv) <- NULL
+
+tmp_splits$FxDimNode <- do.call("rbind.data.frame",
+    list(perf_splits_all$FxDimNode,
+         perf_splits_xtra$FxDimNode2,
+         perf_splits_xtra$FxDimNode3))
+rownames(tmp_splits$FxDimNode) <- NULL
+
+
+
+supl_lst <- lapply(tmp_splits, function(x) {
+    y <- x[,cols]
+    z <- y[with(y, order(BaseEmbDim, Contacts,
+                         EnvEmbDim, EnvNode,
+                         EnvActvIn, EnvActvOut,
+                         FxEmbDim, FxNode,
+                         FxActvIn, FxActvOut,
+                         seed_id)), ]
+    for (cn in colnames(z)) {
+        if (all(is.na(z[,cn]))) {
+            z[,cn] <- "-"
+        }
+
+        if (all(z[,cn] %in% c("000", "None"))) {
+            z[,cn] <- "-"
+        }
+    }
+    colnames(z)[colnames(z) == "model_key"] <- "ModelKey"
+    colnames(z)[colnames(z) == "data_type"] <- "DataType"
+    colnames(z)[colnames(z) == "seed_id"]   <- "Seed"
+    z$Seed <- as.numeric(sub("seed[-]", "", z$Seed))
+    z
+})
+
+
+
+names(supl_lst)[names(supl_lst) == "PosActv"]    <- "EnvActv"
+names(supl_lst)[names(supl_lst) == "PosDimNode"] <- "EnvDimNode"
+
+supl_lst$Stepwise <- local({
+    tmp <- prov_lst_all
+    for (nm in names(tmp)) {
+        z <- tmp[[nm]][,cols]
+        for (cn in colnames(z)) {
+            if (all(is.na(z[,cn]))) {
+                z[,cn] <- "-"
+            }
+
+            if (all(z[,cn] %in% c("000", "None"))) {
+                z[,cn] <- "-"
+            }
+        }
+
+        colnames(z)[colnames(z) == "model_key"] <- "ModelKey"
+        colnames(z)[colnames(z) == "data_type"] <- "DataType"
+        colnames(z)[colnames(z) == "seed_id"]   <- "Seed"
+        z$Type <- nm
+        tmp[[nm]] <- z
+    }
+    do.call("rbind.data.frame", tmp)
+})
+
+library(writexl)
+tune_xlsx_f <- file.path(tune_dir, 'tuning-information.xlsx')
+write_xlsx(supl_lst, tune_xlsx_f)

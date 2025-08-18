@@ -31,6 +31,11 @@ mdl_f      = os.path.join(mdl_dir, 'deephlaffy', 'both',
                           'seed-02', 'model.keras')
 
 
+# mdl_f      = os.path.join(projroot, 'model-v1.1', 'models', 'both',
+#                           'deephlaffy-simple-posmodel-effects-1fc66164',
+#                           'seed-02', 'model.keras')
+
+
 #------------------------------------------------------------------------------#
 #                              Precomputed inputs                              #
 #------------------------------------------------------------------------------#

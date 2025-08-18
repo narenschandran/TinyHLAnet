@@ -120,7 +120,7 @@ pepinp = pep_inputs(datf)
 
 start = time.time()
 mod   = configure_model(conf)
-pred  = mod.predict([hlainp, pepinp])
+pred  = mod.predict([hlainp, pepinp], batch_size = 256)
 
 end   = time.time()
 elaps = end - start

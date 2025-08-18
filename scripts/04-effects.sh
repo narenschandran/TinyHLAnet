@@ -19,7 +19,7 @@ run_model() {
     # Fixed hyperparameters
     local data_type='both'
     local output_dir="${MDL_DIR}"
-    local nmodels=3
+    local nmodels=10
 
     local embdim="$1"
     local contact_type="$2"
@@ -54,33 +54,35 @@ run_model() {
 # These hyperparameters are fixed based on prior experiments.
 contact_type='simple'
 embdim='16'
-pos_conf='16-sigmoid128_sigmoid53'
+pos_confs='16-sigmoid32_sigmoid53 32-sigmoid32_sigmoid53 16-sigmoid128_sigmoid53'
 
-# We fit the models based on just binding affinity to the full dataset
-# (quantitative + qualitative data. The use of the full dataset is specified
-# within the run_model function in this script).
-run_model "$embdim" 'allpairs'
-run_model "$embdim" "$contact_type"
-run_model "$embdim" "$contact_type" "$pos_conf"
+for pos_conf in $(echo "$pos_confs"); do
+    # We fit the models based on just binding affinity to the full dataset
+    # (quantitative + qualitative data. The use of the full dataset is specified
+    # within the run_model function in this script).
+    run_model "$embdim" 'allpairs'
+    run_model "$embdim" "$contact_type"
+    run_model "$embdim" "$contact_type" "$pos_conf"
 
-# This is the best pos_conf
-# Next, we fit models with binding-independent effects
-effects_conf='16-linear16_linear1'
-run_model "$embdim" "$contact_type" "$pos_conf" "$effects_conf"
+    # This is the best pos_conf
+    # Next, we fit models with binding-independent effects
+    effects_conf='16-linear16_linear1'
+    run_model "$embdim" "$contact_type" "$pos_conf" "$effects_conf"
 
-# Optimize activation for binding-independent effects
-in_actvs='linear relu sigmoid tanh gelu'
-out_actv='linear'
-for in_actv in $(echo "$in_actvs"); do
-    run_model "$embdim" "$contact_type" "$pos_conf" "16-${in_actv}16_${out_actv}1"
-done
+    # Optimize activation for binding-independent effects
+    in_actvs='linear relu sigmoid tanh gelu'
+    out_actv='linear'
+    for in_actv in $(echo "$in_actvs"); do
+        run_model "$embdim" "$contact_type" "$pos_conf" "16-${in_actv}16_${out_actv}1"
+    done
 
-# Optimize embedding dimension and hidden node count
-dims='256 128 64 32 16 8 4'
-nodes='256 128 64 32 16 8 4'
+    # Optimize embedding dimension and hidden node count
+    dims='256 128 64 32 16 8 4'
+    nodes='256 128 64 32 16 8 4'
 
-for effects_emb in $(echo "$dims"); do
-for effects_node in $(echo "$nodes"); do
-    run_model "$embdim" "$contact_type" "$pos_conf" "${effects_emb}-gelu${effects_node}_linear1"
-done
+    for effects_emb in $(echo "$dims"); do
+    for effects_node in $(echo "$nodes"); do
+        run_model "$embdim" "$contact_type" "$pos_conf" "${effects_emb}-gelu${effects_node}_linear1"
+    done
+    done
 done

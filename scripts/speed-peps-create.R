@@ -49,7 +49,7 @@ transphla_pkt <- 'YFAMYGEKVAHTHVDTLYVRYHYYTWAVLAYTWY'
 NTHREADS <- 16
 powers <- 1:6
 ms <- 10 ^ (powers)
-netmhc_par_base_odir <- file.path(bench_dir, 'nethmhcpan-parallel', 'data')
+netmhc_par_base_odir <- file.path(bench_dir, 'netmhcpan-parallel', 'data')
 for (p in powers) {
     m <- ms[p]
     pepset <- peps[seq_len(m)]

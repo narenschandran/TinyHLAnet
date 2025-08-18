@@ -20,7 +20,7 @@ run_model() {
     # Fixed hyperparameters
     local data_type='regressand'
     local output_dir="${MDL_DIR}"
-    local nmodels=3
+    local nmodels=10
 
     local embdim="$1"
     local contact_type="$2"

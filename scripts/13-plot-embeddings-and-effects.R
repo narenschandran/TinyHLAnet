@@ -195,14 +195,14 @@ pepeffects_posimp_file <- file.path(pepeffect_dir,
                                     'pepeffect-posimp.tiff')
 {
 tiff_open(pepeffects_posimp_file,
-    width = 2000, height = 2400, res = 400)
+    width = 2000, height = 2000, res = 300)
 par(oma = c(6.5, 2, 2, 2), family = 'symbol')
-plot(boruta_res, ccode, las = 2, xlab = NA, ylab = "Importance", xaxt = 'n', pch = "-")
+plot(boruta_res, ccode, las = 2, xlab = NA, ylab = "Importance", xaxt = 'n', pch = "-", cex.lab = 1.5)
 nitems <- ncol(boruta_res$ImpHistory)
 nms    <- names(sort(apply(boruta_res$ImpHistory, 2, median)))
 #axis(side = 1, seq_len(nitems), labels = NA)
 offset <- -c(-0.8, -0.8, -0.8, rep(0.1, 9))
-text(seq_len(nitems) - offset, c(-32, -32, -32, rep(-18, 9)), labels = nms, xpd = NA, srt = 45, cex = 0.6)
+text(seq_len(nitems) - offset, c(-45, -45, -45, rep(-25, 9)), labels = nms, xpd = NA, srt = 45, cex = 1.25)
 tiff_close(pepeffects_posimp_file)
 }
 
@@ -281,10 +281,11 @@ emb_dat <- lapply(emb_fs, emb_read, vhse_mat = vhse_mat)
 # We plot the clustering of the amino acids across
 # the different embedding systems.
 emb_file <- file.path(emb_dir, 'embeddings.tiff')
-tiff_open(emb_file, width = 2850, height = 1800, res = 300)
-par(mfrow = c(2, 3), family = 'symbol')
-nm_ord <- c("peptide", "hla", "pepeffects",
-            "peptide-context", "hla-context")
+tiff_open(emb_file, width = 2600, height = 2400, res = 300)
+par(mfrow = c(3, 2), family = 'symbol', oma = c(0, 0, 0, 0), mar = c(0, 3, 3, 3), cex = 1)
+nm_ord <- c("peptide", "hla",
+            "peptide-context", "hla-context",
+            "pepeffects")
 for (nm in nm_ord) {
     nmstr <- if (nm == "hla") {
         "Pair-potential\nHLA embedding"
@@ -307,7 +308,11 @@ tiff_close(emb_file)
 
 vhse_dat <- lapply(emb_dat, `[[`, "vhse")
 
-vhse_cats <- sort(Reduce(union, lapply(vhse_dat, `[[`, "desc")))
+tmpvhse <- unique(do.call("rbind.data.frame", lapply(vhse_dat, function(x) x[,c("aaindex", "desc")])))
+rownames(tmpvhse) <- NULL
+tmpvhse$term <- paste0(trimws(sub("[(][A-Za-z0-9, .-]+$", "", sub(")$", "", tmpvhse$desc))), " (", tmpvhse$aaindex, ")")
+
+vhse_cats <- sort(tmpvhse$desc) # sort(Reduce(union, lapply(vhse_dat, `[[`, "desc")))
 
 # We identify which VHSE AAIndex1 categories are correlated
 # with in each embedding system and then plot them.
@@ -317,7 +322,7 @@ a <- lapply(vhse_dat, function(x) {
 
 aa <- local({
     tmp0 <- do.call("cbind", a) * 1
-    rownames(tmp0) <- vhse_cats
+    rownames(tmp0) <- tmpvhse$term[match(vhse_cats, tmpvhse$desc)]
 
     tmp <- tmp0
 
@@ -342,16 +347,18 @@ aa <- local({
 
 {
 vhse_hfile <- file.path(emb_dir, 'embeddings-to-vhse.tiff')
-tiff_open(vhse_hfile, width = 3600, height = 4800, res = 300)
+tiff_open(vhse_hfile, width = 4000, height = 4800, res = 300)
+tmpaaa <- aa[,c(5, 2, 4, 1, 3)]
 pheatmap(
-    aa[,c(5, 2, 4, 1, 3)],
+    tmpaaa,
     cluster_rows = F, cluster_cols = F,
     display_numbers = F,
     col = c("white", "turquoise2"),
     border_col = 'black', angle = 45,
     fontfamily = 'symbol',
-    cellwidth = 25, cellheight = 15,
-    legend = F
+    cellwidth = 25, cellheight = 25,
+    legend = F, fontsize_row = 18, fontsize_col = 15,
+    gaps_row = rep(seq_len(nrow(tmpaaa)-1), each = 2)
 )
 tiff_close(vhse_hfile)
 }

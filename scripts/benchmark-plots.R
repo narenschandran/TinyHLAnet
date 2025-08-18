@@ -141,7 +141,7 @@ for (method in methods) {
 }
 
 roc_legend <- local({
-    tmp    <- signif(sapply(plot_data, `[[`, "auc"), 3)
+    tmp    <- signif(sapply(plot_data[methods], `[[`, "auc"), 3)
     mnames <- method_names(names(tmp))
     sprintf("%s (AUC: %0.3f)", mnames, unname(tmp))
 })
@@ -190,7 +190,7 @@ for (method in methods) {
 }
 
 pr_roc_legend <- local({
-    tmp    <- signif(sapply(plot_data, `[[`, "prauc"), 3)
+    tmp    <- signif(sapply(plot_data[methods], `[[`, "prauc"), 3)
     mnames <- method_names(names(tmp))
     sprintf("%s (PRAUC: %0.3f)", mnames, unname(tmp))
 })
@@ -219,7 +219,7 @@ for (method in methods) {
 }
 
 f1_legend <- local({
-    tmp    <- signif(sapply(plot_data, function(x) max(x$f1[,"F1 score"], na.rm = T)) , 3)
+    tmp    <- signif(sapply(plot_data[methods], function(x) max(x$f1[,"F1 score"], na.rm = T)) , 3)
     mnames <- method_names(names(tmp))
     sprintf("%s (Max F1 score: %0.3f)", mnames, unname(tmp))
 })
@@ -299,7 +299,7 @@ tiff_close(speed_file)
 
 {
 speed_file2 <- file.path(plots_dir, 'speed-comparison-2.tiff')
-tiff_open(speed_file2, width = 1800, height = 2000, res = 300)
+tiff_open(speed_file2, width = 1800, height = 2200, res = 300)
 par(family = 'symbol', oma = c(6, 3, 3, 3))
 speed_vec <- local({
     per_sec <- 1000000 / speed_dat["1e+06",]
@@ -308,13 +308,12 @@ speed_vec <- local({
 bp <- barplot(speed_vec, xaxt = 'n',
         ylab = "# predictions per second",
         col = method_colors(names(speed_vec)),
-        ylim = c(0, 25000))
+        ylim = c(0, 60000))
 tmpnms <- method_names(names(speed_vec))
 tmpnms[tmpnms == "netMHCpan 4.1 (par)"] <- "netMHCpan 4.1\n(par)"
-text(bp[,1] - 0.6, -4300, labels = tmpnms, xpd = NA, srt = 45)
+text(bp[,1] - 0.6, -8500, labels = tmpnms, xpd = NA, srt = 45)
 in_mille <- sprintf("~%0.1fk", unname(speed_vec) / 1000)
-in_mille[in_mille == "~18.0k"] <- "~18k"
-text(bp[,1], speed_vec + 750, labels = in_mille)
+text(bp[,1], speed_vec + 1500, labels = in_mille)
 tiff_close(speed_file2)
 }
 
