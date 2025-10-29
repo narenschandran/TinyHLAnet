@@ -25,15 +25,9 @@ projroot   = os.path.join(libdir, '..')
 prereq_dir = os.path.join(projroot, 'prereq')
 mdl_dir    = os.path.join(projroot, 'models')
 
-
-mdl_f      = os.path.join(mdl_dir, 'deephlaffy', 'both',
+mdl_f      = os.path.join(projroot, 'model-v1.1', 'models', 'both',
                           'deephlaffy-simple-posmodel-effects-1fc66164',
                           'seed-02', 'model.keras')
-
-
-# mdl_f      = os.path.join(projroot, 'model-v1.1', 'models', 'both',
-#                           'deephlaffy-simple-posmodel-effects-1fc66164',
-#                           'seed-02', 'model.keras')
 
 
 #------------------------------------------------------------------------------#

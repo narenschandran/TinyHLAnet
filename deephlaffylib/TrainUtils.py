@@ -91,6 +91,39 @@ def data_get(data_type, subset="both"):
 
     return data
 
+def data_get_1_1(data_type, subset="both"):
+    '''Wrapper function to retrieve data in a format ready to be fed for model training.'''
+    inpo = ["hla", "pep"]
+    outo = ["regressand", "binder"]
+    data = {}
+
+    # The function is hardcoded to expect the preprocessed datasets to
+    # be present in the following location:
+    proc_dir = os.path.join(projroot, "model-v1.1", "datasets", "proc")
+
+    # We retrieve the preprocessed datasets from the following location
+    # and ensure that only the required data (regerssion/binder/both) is
+    # produced to the user.
+    data_files = pklfiles_get(proc_dir)
+    fs = data_files[data_type]
+
+    for sp in fs:
+        dat = data_assemble(fs[sp], inpo, outo)
+        if subset != "both":
+            if subset == "regressand":
+                l = dat[1][0] > (-1.0)
+            elif subset == "binder":
+                l = dat[1][1] > (-1.0)
+            else:
+                raise ValueError(
+                    "Data subset should be 'both', 'regressand' or 'binder'"
+                )
+            ind = np.argwhere(l)[:, 0]
+            dat[0] = [inp[ind, ...] for inp in dat[0]]
+            dat[1] = [inp[ind, ...] for inp in dat[1]]
+        data[sp] = dat
+
+    return data
 #------------------------------------------------------------------------------#
 #                  Performance assessement for dataset splits                  #
 #------------------------------------------------------------------------------#

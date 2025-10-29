@@ -1,0 +1,6 @@
+hlalen	44
+peplen	9
+pp_embdim	16
+contacts	simple
+pos_conf	16-sigmoid128_sigmoid53
+effects_conf	16-gelu256_linear1
