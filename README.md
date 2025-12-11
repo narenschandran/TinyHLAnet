@@ -35,7 +35,7 @@ The first and simplest of these is the `tinyhlanet.py` script, which can be used
 ```
 python tinyhlanet.py -o example/quick-run example/data.tsv
 ```
-The file `example/quick-run/data.tinyhlanet.tsv.gz` should have been generated at this point with four columns: `hla`, `peptide`, `pred_regressand` (S score), and `pred_binder` (S* score). As a general rule of thumb, any epitope that has S score > 0.2 and S* score > 0.5 can be considered as a probable epitope. It is not recommended to reduce these cutoffs beyond these values.
+The file `example/quick-run/data.tinyhlanet.tsv.gz` should have been generated at this point with four columns: `hla`, `peptide`, `pred_regressand` (S score), and `pred_binder` (S* score). As a general rule of thumb, any epitope that has S score > 0.2 and S* score > 0.5 can be considered as a probable epitope. This is a very lax cutoff, and it is not recommended to reduce these cutoffs below these values. If trying to identify specific epitopes from a protein, users are recommended to use the scanning module mentioned below, and then choose at most the top-5 ranked eptiopes for increased specificity.
 
 The `tinyhlanet.py` script can also provide detailed information about the specific reisude pairs that contribute most to pHLA-I complex formation. These can be accessed by running the following command:
 ```
