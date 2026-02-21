@@ -23,7 +23,7 @@ rankmat <- local({
         lapply(x, rankfn, flip = T)
     }))
     colnames(tmp) <- paste0(colnames(tmp), "_rank")
-    ult_rank <- lapply(apply(tmp, 1, Reduce, f = `*`), rankfn)
+    ult_rank <- lapply(apply(tmp, 1, Reduce, f = `*`, simplify = F), rankfn)
     cbind(tmp, rank = ult_rank)
 })
 
@@ -32,11 +32,10 @@ stopifnot(all(x$protein == rownames(rankmat)))
 
 rank_str <- apply(rankmat, 2, function(x) {
     sapply(x, paste, collapse = ",")
-})
+}, simplify = F)
 
 dat <- data.frame(
     x,
     rank_str
 )
-
 write.table(dat, sep = '\t', row.names = F, quote = F)
